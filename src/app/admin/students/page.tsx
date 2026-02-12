@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Search, X, ChevronDown } from "lucide-react";
+import { Search, X, ChevronDown, Eye } from "lucide-react";
 
 import { useFinance } from "@/lib/finance-context";
 import { ActionDialog } from "@/components/action-dialog";
+import { StudentInsightModal } from "@/components/student-insight-modal";
 import {
   formatGBP,
   getAvailableActions,
@@ -36,6 +37,7 @@ export default function StudentsPage() {
   const [sortDesc, setSortDesc] = useState(true);
 
   const [selectedStudent, setSelectedStudent] = useState<StudentRecord | null>(null);
+  const [insightStudent, setInsightStudent] = useState<StudentRecord | null>(null);
   const [actionStudent, setActionStudent] = useState<StudentRecord | null>(null);
   const [activeAction, setActiveAction] = useState<string | null>(null);
 
@@ -190,9 +192,24 @@ export default function StudentsPage() {
                     onClick={() => setSelectedStudent(student)}
                   >
                     <td className="px-4 py-3.5">
-                      <p className="font-medium text-slate-900">{student.name}</p>
-                      <p className="mt-0.5 text-xs text-slate-500">{student.email}</p>
-                      <p className="text-[11px] text-slate-400">{student.id}</p>
+                      <div className="flex items-start gap-1.5">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-slate-900">{student.name}</p>
+                          <p className="mt-0.5 text-xs text-slate-500">{student.email}</p>
+                          <p className="text-[11px] text-slate-400">{student.id}</p>
+                        </div>
+                        <button
+                          type="button"
+                          title="Quick insight"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setInsightStudent(student);
+                          }}
+                          className="mt-0.5 shrink-0 rounded-md p-1 text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </td>
                     <td className="px-4 py-3.5 text-slate-700">{student.method}</td>
                     <td className="px-4 py-3.5">
@@ -410,6 +427,12 @@ export default function StudentsPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Student Insight Modal */}
+      <StudentInsightModal
+        student={insightStudent}
+        onClose={() => setInsightStudent(null)}
+      />
 
       {/* Action Dialog */}
       <AnimatePresence>
