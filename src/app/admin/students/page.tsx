@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Search, X, ChevronDown, Eye } from "lucide-react";
+import { Search, X, ChevronDown, Eye, MoreVertical } from "lucide-react";
 
 import { useFinance } from "@/lib/finance-context";
 import { ActionDialog } from "@/components/action-dialog";
@@ -40,6 +40,18 @@ export default function StudentsPage() {
   const [insightStudent, setInsightStudent] = useState<StudentRecord | null>(null);
   const [actionStudent, setActionStudent] = useState<StudentRecord | null>(null);
   const [activeAction, setActiveAction] = useState<string | null>(null);
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpenDropdownId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const allStates = useMemo(
     () => Array.from(new Set(students.map((s) => s.state))).sort(),
@@ -84,9 +96,9 @@ export default function StudentsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Student Directory</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">Work Items</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Search and manage all students. Click a row to view details or use quick actions.
+          Search and manage all work items. Click a row to view details or use the actions menu.
         </p>
       </div>
 
@@ -233,28 +245,40 @@ export default function StudentsPage() {
                       })}
                     </td>
                     <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex flex-wrap gap-1.5">
-                        {actions.length > 0 ? (
+                      {actions.length > 0 ? (
+                        <div className="relative" ref={openDropdownId === student.id ? dropdownRef : undefined}>
                           <button
                             type="button"
-                            className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-slate-800"
-                            onClick={() => openAction(student, actions[0])}
+                            className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+                            onClick={() =>
+                              setOpenDropdownId((prev) =>
+                                prev === student.id ? null : student.id
+                              )
+                            }
                           >
-                            {actions[0]}
+                            <MoreVertical className="h-4 w-4" />
                           </button>
-                        ) : (
-                          <span className="text-xs text-slate-400">No actions</span>
-                        )}
-                        {actions.length > 1 && (
-                          <button
-                            type="button"
-                            className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
-                            onClick={() => openAction(student, actions[1])}
-                          >
-                            {actions[1]}
-                          </button>
-                        )}
-                      </div>
+                          {openDropdownId === student.id && (
+                            <div className="absolute right-0 z-20 mt-1 min-w-[180px] rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                              {actions.map((action) => (
+                                <button
+                                  key={action}
+                                  type="button"
+                                  className="flex w-full items-center px-3 py-2 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                                  onClick={() => {
+                                    setOpenDropdownId(null);
+                                    openAction(student, action);
+                                  }}
+                                >
+                                  {action}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      )}
                     </td>
                   </motion.tr>
                 );
