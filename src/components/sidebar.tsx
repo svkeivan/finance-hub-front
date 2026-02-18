@@ -4,21 +4,39 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ClipboardList,
+  LayoutDashboard,
   Landmark,
+  ArrowLeftRight,
+  Eye,
+  AlertTriangle,
+  RotateCcw,
+  ShieldAlert,
+  Ban,
 } from "lucide-react";
+
+import { useFinance } from "@/lib/finance-context";
 
 type NavItem = {
   label: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
+  badge?: number;
 };
-
-const NAV_ITEMS: NavItem[] = [
-  { label: "Work Items", href: "/admin/students", icon: ClipboardList },
-];
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { queueCounts } = useFinance();
+
+  const NAV_ITEMS: NavItem[] = [
+    // { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
+    { label: "Work Items", href: "/admin/students", icon: ClipboardList },
+    // { label: "Bank Match", href: "/admin/bank-match", icon: ArrowLeftRight, badge: queueCounts["bank-match"] },
+    // { label: "Arrears", href: "/admin/arrears", icon: AlertTriangle, badge: queueCounts["arrears"] },
+    // { label: "Refunds", href: "/admin/refunds", icon: RotateCcw, badge: queueCounts["refunds"] },
+    // { label: "Collections", href: "/admin/collections", icon: ShieldAlert, badge: queueCounts["collections"] },
+    { label: "Cancellations", href: "/admin/cancellations", icon: Ban },
+    // { label: "Credit Pipeline", href: "/admin/finance-sync", icon: Eye, badge: queueCounts["finance-sync"] },
+  ];
 
   return (
     <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-slate-800 bg-slate-900">
@@ -55,6 +73,11 @@ export function Sidebar() {
                     }`}
                   />
                   <span className="flex-1">{item.label}</span>
+                  {item.badge != null && item.badge > 0 && (
+                    <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-slate-700 px-1.5 text-[10px] font-semibold text-slate-300">
+                      {item.badge}
+                    </span>
+                  )}
                 </Link>
               </li>
             );

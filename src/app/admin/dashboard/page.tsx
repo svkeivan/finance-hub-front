@@ -21,6 +21,7 @@ import {
   RefreshCw,
   RotateCcw,
   AlertTriangle,
+  ShieldAlert,
   ArrowRight,
   Clock,
   PoundSterling,
@@ -47,20 +48,28 @@ const KPI_CONFIG = [
     iconBg: "bg-blue-100",
   },
   {
-    label: "Stale Finance Apps",
+    label: "Credit Applications",
     icon: RefreshCw,
-    color: "text-amber-600",
-    bgColor: "bg-amber-50",
-    borderColor: "border-amber-100",
-    iconBg: "bg-amber-100",
+    color: "text-purple-600",
+    bgColor: "bg-purple-50",
+    borderColor: "border-purple-100",
+    iconBg: "bg-purple-100",
   },
   {
-    label: "Refunds Owed",
+    label: "Refunds Pipeline",
     icon: RotateCcw,
     color: "text-violet-600",
     bgColor: "bg-violet-50",
     borderColor: "border-violet-100",
     iconBg: "bg-violet-100",
+  },
+  {
+    label: "In Collections",
+    icon: ShieldAlert,
+    color: "text-red-600",
+    bgColor: "bg-red-50",
+    borderColor: "border-red-100",
+    iconBg: "bg-red-100",
   },
 ];
 
@@ -75,7 +84,7 @@ export default function DashboardPage() {
       .reduce((sum, s) => sum + Math.max(0, s.totalDue - s.totalPaid), 0);
 
     const refundsAmount = students
-      .filter((s) => s.state === "Refund_Pending")
+      .filter((s) => ["Refund_Pending", "Refund_Processing"].includes(s.state))
       .reduce((sum, s) => sum + s.totalPaid, 0);
 
     return [
@@ -83,6 +92,7 @@ export default function DashboardPage() {
       queueCounts["bank-match"].toString(),
       queueCounts["finance-sync"].toString(),
       formatGBP(refundsAmount),
+      queueCounts["collections"].toString(),
     ];
   }, [students, queueCounts]);
 
@@ -144,11 +154,27 @@ export default function DashboardPage() {
       const refundTotal = refundStudents.reduce((sum, s) => sum + s.totalPaid, 0);
       items.push({
         priority: "low",
-        label: `${refundStudents.length} refund${refundStudents.length > 1 ? "s" : ""} pending approval`,
+        label: `${refundStudents.length} refund${refundStudents.length > 1 ? "s" : ""} in pipeline`,
         description: `Total paid: ${formatGBP(refundTotal)}`,
         href: "/admin/refunds",
         icon: RotateCcw,
         color: "text-violet-600 bg-violet-50 border-violet-100",
+      });
+    }
+
+    const collectionStudents = filterByQueue(students, "collections");
+    if (collectionStudents.length > 0) {
+      const collTotal = collectionStudents.reduce(
+        (sum, s) => sum + Math.max(0, s.totalDue - s.totalPaid),
+        0,
+      );
+      items.push({
+        priority: "high",
+        label: `${collectionStudents.length} student${collectionStudents.length > 1 ? "s" : ""} in collections`,
+        description: `${formatGBP(collTotal)} outstanding — includes ${collectionStudents.filter((s) => s.state === "Collection_Processing").length} with agency`,
+        href: "/admin/collections",
+        icon: ShieldAlert,
+        color: "text-red-600 bg-red-50 border-red-100",
       });
     }
 
@@ -188,7 +214,7 @@ export default function DashboardPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {KPI_CONFIG.map((kpi, i) => {
           const Icon = kpi.icon;
           return (

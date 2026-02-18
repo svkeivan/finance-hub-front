@@ -11,12 +11,20 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 
 import { MOCK_STUDENTS } from "@/data/mockStudents";
-import { filterByQueue, getNextStateForAction } from "@/lib/finance";
+import {
+  filterByQueue,
+  getNextStateForAction,
+  NEEDS_CANCELLATION_REASON,
+  STATE_ACCESS_LEVEL,
+} from "@/lib/finance";
 import type {
+  CancellationReasonCode,
   FinanceActionLog,
+  FinanceState,
   QueueKey,
   StudentRecord,
 } from "@/types/finance";
+import type { SettlementStatusValue } from "@/lib/finance";
 
 type ToastMessage = { type: "success" | "error"; text: string };
 
@@ -26,6 +34,15 @@ type ApplyActionParams = {
   reason: string;
   reference?: string;
   receivedAmount?: number;
+  cancellationReasonCode?: CancellationReasonCode;
+  cancellationReason?: string;
+  cancellationFeeAdjusted?: number;
+  cancellationFeeAdjustReason?: string;
+  settlementStatus?: SettlementStatusValue;
+  settlementAmount?: number;
+  stripePaymentLink?: string;
+  refundAmount?: number;
+  collectionAmount?: number;
 };
 
 type FinanceContextValue = {
@@ -45,6 +62,7 @@ const QUEUE_KEYS: QueueKey[] = [
   "finance-sync",
   "arrears",
   "refunds",
+  "collections",
 ];
 
 export function FinanceProvider({ children }: { children: ReactNode }) {
@@ -66,27 +84,130 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   }, [students]);
 
   const applyAction = useCallback(
-    ({ studentId, action, reason, reference, receivedAmount }: ApplyActionParams) => {
+    (params: ApplyActionParams) => {
+      const {
+        studentId,
+        action,
+        reason,
+        reference,
+        receivedAmount,
+        cancellationReasonCode,
+        cancellationReason,
+        cancellationFeeAdjusted,
+        cancellationFeeAdjustReason,
+        settlementStatus,
+        settlementAmount,
+        stripePaymentLink,
+        refundAmount,
+        collectionAmount,
+      } = params;
+
       const student = students.find((s) => s.id === studentId);
       if (!student) return false;
 
-      const nextState = getNextStateForAction(action, student.state);
+      const nextState = getNextStateForAction(
+        action,
+        student.state,
+        student.cancellationSourceState,
+      );
       const updatedAt = new Date().toISOString();
 
+      const isCancellationEntry = NEEDS_CANCELLATION_REASON.includes(action);
+
       setStudents((prev) =>
-        prev.map((row) =>
-          row.id === studentId
-            ? {
-                ...row,
-                state: nextState,
-                lastUpdated: updatedAt,
-                totalPaid:
-                  action === "Confirm Bank Deposit" && receivedAmount != null
-                    ? receivedAmount
-                    : row.totalPaid,
-              }
-            : row,
-        ),
+        prev.map((row) => {
+          if (row.id !== studentId) return row;
+
+          const updated: StudentRecord = {
+            ...row,
+            state: nextState,
+            access: STATE_ACCESS_LEVEL[nextState],
+            lastUpdated: updatedAt,
+          };
+
+          /* Track source state + cancellation reason for cancellation requests */
+          if (isCancellationEntry) {
+            updated.cancellationSourceState = row.state;
+            updated.cancellationReasonCode = cancellationReasonCode;
+            updated.cancellationReason = cancellationReason || reason;
+          }
+
+          /* Store fee adjustments */
+          if (cancellationFeeAdjusted != null) {
+            updated.cancellationFeeAdjusted = cancellationFeeAdjusted;
+            updated.cancellationFeeAdjustReason =
+              cancellationFeeAdjustReason || undefined;
+          }
+
+          /* Clear source state on reversal completion */
+          if (action === "Reverse Refund" || action === "Reverse Collection") {
+            updated.cancellationSourceState = undefined;
+            updated.cancellationReasonCode = undefined;
+            updated.cancellationReason = undefined;
+            updated.cancellationFeeAdjusted = undefined;
+            updated.cancellationFeeAdjustReason = undefined;
+          }
+
+          /* Update totalPaid when receiving payments */
+          if (
+            (action === "Mark as Paid" ||
+              action === "Payment Received" ||
+              action === "Final Payment") &&
+            receivedAmount != null
+          ) {
+            updated.totalPaid = row.totalPaid + receivedAmount;
+          }
+
+          /* Increment paidInstalments for instalment-based payment actions */
+          if (
+            (action === "Payment Received" || action === "Final Payment") &&
+            row.totalInstalments != null &&
+            row.paidInstalments != null
+          ) {
+            updated.paidInstalments = row.paidInstalments + 1;
+          }
+
+          /* Store reference code */
+          if (reference) {
+            updated.referenceCode = reference;
+          }
+
+          /* Store Stripe payment link for Collection_Pending */
+          if (stripePaymentLink) {
+            updated.stripePaymentLink = stripePaymentLink;
+          }
+
+          /* Store refund amount on entry to Refund_Processing */
+          if (
+            action === "Proceed to Processing" &&
+            row.state === "Refund_Pending" &&
+            refundAmount != null
+          ) {
+            updated.refundAmount = refundAmount;
+          }
+
+          /* Store collection amount on entry to Collection_Processing */
+          if (
+            action === "Proceed to Processing" &&
+            row.state === "Collection_Pending" &&
+            collectionAmount != null
+          ) {
+            updated.collectionAmount = collectionAmount;
+          }
+
+          /* Settlement status + amount for Mark Settled */
+          if (action === "Mark Settled") {
+            if (settlementStatus) {
+              (updated as Record<string, unknown>).settlementStatus =
+                settlementStatus;
+            }
+            if (settlementAmount != null) {
+              updated.settlementAmount = settlementAmount;
+            }
+          }
+
+          return updated;
+        }),
       );
 
       setLogs((prev) => [

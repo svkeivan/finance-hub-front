@@ -2,36 +2,41 @@
 
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertTriangle, Clock } from "lucide-react";
+import { ShieldAlert, Clock } from "lucide-react";
 
 import { useFinance } from "@/lib/finance-context";
 import { ActionDialog } from "@/components/action-dialog";
 import {
-  DESTRUCTIVE_ACTIONS,
   filterByQueue,
   formatGBP,
-  getAvailableActions,
   daysSince,
   STATE_BADGE_CLASS,
 } from "@/lib/finance";
 import type { StudentRecord } from "@/types/finance";
 
-export default function ArrearsPage() {
+export default function CollectionsPage() {
   const { students } = useFinance();
   const [actionStudent, setActionStudent] = useState<StudentRecord | null>(null);
   const [activeAction, setActiveAction] = useState<string | null>(null);
 
   const queueStudents = useMemo(
     () =>
-      filterByQueue(students, "arrears").sort((a, b) => {
-        // Delinquent first, then by outstanding amount descending
-        if (a.state === "Delinquent" && b.state !== "Delinquent") return -1;
-        if (a.state !== "Delinquent" && b.state === "Delinquent") return 1;
-        const aOut = a.totalDue - a.totalPaid;
-        const bOut = b.totalDue - b.totalPaid;
-        return bOut - aOut;
+      filterByQueue(students, "collections").sort((a, b) => {
+        if (a.state === "Collection_Pending" && b.state !== "Collection_Pending") return -1;
+        if (a.state !== "Collection_Pending" && b.state === "Collection_Pending") return 1;
+        return new Date(a.lastUpdated).getTime() - new Date(b.lastUpdated).getTime();
       }),
     [students],
+  );
+
+  const pendingStudents = useMemo(
+    () => queueStudents.filter((s) => s.state === "Collection_Pending"),
+    [queueStudents],
+  );
+
+  const processingStudents = useMemo(
+    () => queueStudents.filter((s) => s.state === "Collection_Processing"),
+    [queueStudents],
   );
 
   const totalOutstanding = useMemo(
@@ -43,51 +48,54 @@ export default function ArrearsPage() {
     [queueStudents],
   );
 
-  const delinquentCount = useMemo(
-    () => queueStudents.filter((s) => s.state === "Delinquent").length,
-    [queueStudents],
-  );
-
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start gap-4">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-100">
-          <AlertTriangle className="h-6 w-6 text-red-600" />
+          <ShieldAlert className="h-6 w-6 text-red-600" />
         </div>
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Arrears</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">Collections</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Students with missed or overdue payments. Delinquent cases are shown first
-            and require immediate attention.
+            Two-step collections pipeline: hand off pending cases to agency/interim,
+            then mark as settled. Reversals route back to Payment Pending.
           </p>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+        <div className="rounded-xl border border-red-100 bg-red-50 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-red-600">
+            Total in Queue
+          </p>
+          <p className="mt-2 text-2xl font-bold text-red-700">
+            {queueStudents.length}
+          </p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Awaiting Handoff
+          </p>
+          <p className="mt-2 text-2xl font-bold text-slate-900">
+            {pendingStudents.length}
+          </p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            With Agency
+          </p>
+          <p className="mt-2 text-2xl font-bold text-slate-900">
+            {processingStudents.length}
+          </p>
+        </div>
         <div className="rounded-xl border border-red-100 bg-red-50 p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-red-600">
             Total Outstanding
           </p>
           <p className="mt-2 text-2xl font-bold text-red-700">
             {formatGBP(totalOutstanding)}
-          </p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Students in Arrears
-          </p>
-          <p className="mt-2 text-2xl font-bold text-slate-900">
-            {queueStudents.length}
-          </p>
-        </div>
-        <div className="rounded-xl border border-red-100 bg-red-50 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-red-600">
-            Delinquent
-          </p>
-          <p className="mt-2 text-2xl font-bold text-red-700">
-            {delinquentCount}
           </p>
         </div>
       </div>
@@ -98,9 +106,9 @@ export default function ArrearsPage() {
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50">
             <Clock className="h-5 w-5 text-emerald-600" />
           </div>
-          <p className="text-sm font-medium text-slate-700">No arrears</p>
+          <p className="text-sm font-medium text-slate-700">No active collections</p>
           <p className="mt-1 text-xs text-slate-500">
-            All students are up to date with payments.
+            No students are currently in the collections pipeline.
           </p>
         </div>
       ) : (
@@ -112,7 +120,7 @@ export default function ArrearsPage() {
                 <th className="px-4 py-3 font-medium text-slate-600">State</th>
                 <th className="px-4 py-3 font-medium text-slate-600">Method</th>
                 <th className="px-4 py-3 font-medium text-slate-600">Outstanding</th>
-                <th className="px-4 py-3 font-medium text-slate-600">Days Overdue</th>
+                <th className="px-4 py-3 font-medium text-slate-600">Days in Queue</th>
                 <th className="px-4 py-3 font-medium text-slate-600">Actions</th>
               </tr>
             </thead>
@@ -120,8 +128,7 @@ export default function ArrearsPage() {
               <AnimatePresence mode="popLayout">
                 {queueStudents.map((student) => {
                   const outstanding = Math.max(0, student.totalDue - student.totalPaid);
-                  const isDelinquent = student.state === "Delinquent";
-                  const actions = getAvailableActions(student.state, student.method);
+                  const isPending = student.state === "Collection_Pending";
 
                   return (
                     <motion.tr
@@ -131,7 +138,7 @@ export default function ArrearsPage() {
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0, x: -20 }}
                       className={`border-t align-top ${
-                        isDelinquent
+                        isPending
                           ? "border-red-100 bg-red-50/30"
                           : "border-slate-50"
                       }`}
@@ -139,9 +146,9 @@ export default function ArrearsPage() {
                       <td className="px-4 py-3.5">
                         <p className="font-medium text-slate-900">
                           {student.name}
-                          {isDelinquent && (
+                          {isPending && (
                             <span className="ml-2 inline-block rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-red-700">
-                              Urgent
+                              Pending
                             </span>
                           )}
                         </p>
@@ -164,31 +171,54 @@ export default function ArrearsPage() {
                         {daysSince(student.lastUpdated)}d
                       </td>
                       <td className="px-4 py-3.5">
-                        <div className="flex flex-wrap gap-2">
-                          {actions.map((action) => {
-                            const isDestructiveAction = DESTRUCTIVE_ACTIONS.includes(action);
-                            return (
+                        <div className="flex gap-2">
+                          {isPending ? (
+                            <>
                               <button
-                                key={action}
                                 type="button"
                                 onClick={() => {
                                   setActionStudent(student);
-                                  setActiveAction(action);
+                                  setActiveAction("Proceed to Processing");
                                 }}
-                                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                                  action === "Payment Received" || action === "Final Payment"
-                                    ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                                    : action === "Resume Payments"
-                                      ? "bg-blue-600 text-white hover:bg-blue-700"
-                                      : isDestructiveAction
-                                        ? "border border-red-200 text-red-600 hover:bg-red-50"
-                                        : "border border-slate-200 text-slate-600 hover:bg-slate-50"
-                                }`}
+                                className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-700"
                               >
-                                {action}
+                                Proceed to Processing
                               </button>
-                            );
-                          })}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActionStudent(student);
+                                  setActiveAction("Reverse Collection");
+                                }}
+                                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                              >
+                                Reverse
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActionStudent(student);
+                                  setActiveAction("Mark Settled");
+                                }}
+                                className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-700"
+                              >
+                                Mark Settled
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActionStudent(student);
+                                  setActiveAction("Reverse to Payment Pending");
+                                }}
+                                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                              >
+                                Reverse
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </motion.tr>

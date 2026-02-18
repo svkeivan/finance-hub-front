@@ -9,6 +9,7 @@ import { ActionDialog } from "@/components/action-dialog";
 import {
   filterByQueue,
   formatGBP,
+  getAvailableActions,
   daysSince,
   STATE_BADGE_CLASS,
 } from "@/lib/finance";
@@ -97,70 +98,77 @@ export default function BankMatchPage() {
               <tr>
                 <th className="px-4 py-3 font-medium text-slate-600">Student</th>
                 <th className="px-4 py-3 font-medium text-slate-600">State</th>
+                <th className="px-4 py-3 font-medium text-slate-600">Method</th>
                 <th className="px-4 py-3 font-medium text-slate-600">Expected Amount</th>
                 <th className="px-4 py-3 font-medium text-slate-600">Paid So Far</th>
                 <th className="px-4 py-3 font-medium text-slate-600">Waiting Since</th>
-                <th className="px-4 py-3 font-medium text-slate-600">Action</th>
+                <th className="px-4 py-3 font-medium text-slate-600">Actions</th>
               </tr>
             </thead>
             <tbody>
               <AnimatePresence mode="popLayout">
-                {queueStudents.map((student) => (
-                  <motion.tr
-                    key={student.id}
-                    layout
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    className="border-t border-slate-50 align-top"
-                  >
-                    <td className="px-4 py-3.5">
-                      <p className="font-medium text-slate-900">{student.name}</p>
-                      <p className="mt-0.5 text-xs text-slate-500">{student.email}</p>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <span
-                        className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${STATE_BADGE_CLASS[student.state]}`}
-                      >
-                        {student.state.replace(/_/g, " ")}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 font-semibold text-slate-900">
-                      {formatGBP(student.totalDue)}
-                    </td>
-                    <td className="px-4 py-3.5 text-slate-700">
-                      {formatGBP(student.totalPaid)}
-                    </td>
-                    <td className="px-4 py-3.5 text-slate-500">
-                      {daysSince(student.lastUpdated)} day
-                      {daysSince(student.lastUpdated) !== 1 ? "s" : ""}
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActionStudent(student);
-                            setActiveAction("Confirm Bank Deposit");
-                          }}
-                          className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700"
+                {queueStudents.map((student) => {
+                  const actions = getAvailableActions(student.state, student.method);
+                  return (
+                    <motion.tr
+                      key={student.id}
+                      layout
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="border-t border-slate-50 align-top"
+                    >
+                      <td className="px-4 py-3.5">
+                        <p className="font-medium text-slate-900">{student.name}</p>
+                        <p className="mt-0.5 text-xs text-slate-500">{student.email}</p>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span
+                          className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${STATE_BADGE_CLASS[student.state]}`}
                         >
-                          Match Deposit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActionStudent(student);
-                            setActiveAction("Cancel Account");
-                          }}
-                          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))}
+                          {student.state.replace(/_/g, " ")}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 text-slate-700">{student.method}</td>
+                      <td className="px-4 py-3.5 font-semibold text-slate-900">
+                        {formatGBP(student.totalDue)}
+                      </td>
+                      <td className="px-4 py-3.5 text-slate-700">
+                        {formatGBP(student.totalPaid)}
+                      </td>
+                      <td className="px-4 py-3.5 text-slate-500">
+                        {daysSince(student.lastUpdated)} day
+                        {daysSince(student.lastUpdated) !== 1 ? "s" : ""}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex gap-2">
+                          {actions.map((action) => (
+                            <button
+                              key={action}
+                              type="button"
+                              onClick={() => {
+                                setActionStudent(student);
+                                setActiveAction(action);
+                              }}
+                              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                                action === "Mark as Paid"
+                                  ? "bg-blue-600 text-white hover:bg-blue-700"
+                                  : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+                              }`}
+                            >
+                              {action === "Mark as Overdue" ? "Mark Overdue" : action}
+                            </button>
+                          ))}
+                          {actions.length === 0 && (
+                            <span className="text-xs text-slate-400">
+                              Awaiting automated payment
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </motion.tr>
+                  );
+                })}
               </AnimatePresence>
             </tbody>
           </table>

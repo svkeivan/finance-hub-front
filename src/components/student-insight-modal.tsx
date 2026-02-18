@@ -169,13 +169,13 @@ export function StudentInsightModal({ student, onClose }: StudentInsightModalPro
                     <p className="text-[11px] text-slate-500">Modules</p>
                     <p className="text-sm font-semibold text-slate-900">
                       {student.modulesAccessed}
-                      <span className="font-normal text-slate-400">/10</span>
+                      <span className="font-normal text-slate-400">/12</span>
                     </p>
                   </div>
                   <div>
-                    <p className="text-[11px] text-slate-500">Package</p>
+                    <p className="text-[11px] text-slate-500">Access</p>
                     <p className="text-sm font-semibold text-slate-900">
-                      {student.access}
+                      {student.access.replace(/_/g, " ")}
                     </p>
                   </div>
                   <div>
