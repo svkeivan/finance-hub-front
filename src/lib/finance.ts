@@ -153,8 +153,8 @@ const ACTION_MAP: Record<FinanceState, string[]> = {
     "Cancel Account",
   ],
   Balance_Pending: ["Mark as Paid", "Mark as Overdue"],
-  Refund_Pending: ["Proceed to Processing", "Reverse Refund"],
-  Refund_Processing: ["Complete Refund", "Reverse to Payment Pending"],
+  Refund_Pending: ["Proceed to Processing"],
+  Refund_Processing: ["Complete Refund"],
   Collection_Pending: ["Proceed to Processing", "Reverse Collection"],
   Collection_Processing: ["Mark Settled", "Reverse to Payment Pending"],
 
@@ -170,21 +170,20 @@ const ACTION_MAP: Record<FinanceState, string[]> = {
 /* ───────────────────────────────────────────────
    Method-restricted actions
    
-   Payments for automated methods (Card, DD, PCL)
-   are detected via Stripe webhooks / DD system /
-   3rd-party API — the admin cannot manually confirm
-   payment receipt for these methods.
+   Card/DD instalments and DD Pay Full auto-detect
+   payments via Stripe webhooks / DD system.
    
-   Only Bank Transfer requires manual confirmation.
+   Bank Transfer always needs manual confirmation.
+   Premium Credit (PCL) needs manual confirmation
+   in Balance_Pending — the credit company sends a
+   lump sum to AT's bank account after approval.
    ─────────────────────────────────────────────── */
 
-const MANUAL_PAYMENT_ACTIONS = [
-  "Payment Received",
-  "Final Payment",
-  "Mark as Paid",
-];
-
-const MANUAL_PAYMENT_METHODS: PaymentMethod[] = ["Bank Transfer"];
+const ACTION_ALLOWED_METHODS: Record<string, PaymentMethod[]> = {
+  "Payment Received": ["Bank Transfer"],
+  "Final Payment": ["Bank Transfer"],
+  "Mark as Paid": ["Bank Transfer", "Premium Credit"],
+};
 
 export const getAvailableActions = (
   state: FinanceState,
@@ -193,9 +192,8 @@ export const getAvailableActions = (
   const actions = ACTION_MAP[state] ?? [];
   if (!method) return actions;
   return actions.filter((action) => {
-    if (MANUAL_PAYMENT_ACTIONS.includes(action)) {
-      return MANUAL_PAYMENT_METHODS.includes(method);
-    }
+    const allowedMethods = ACTION_ALLOWED_METHODS[action];
+    if (allowedMethods) return allowedMethods.includes(method);
     return true;
   });
 };
@@ -267,7 +265,6 @@ export const DESTRUCTIVE_ACTIONS = [
 export const REVERSAL_ACTIONS = [
   "Reverse Collection",
   "Reverse to Payment Pending",
-  "Reverse Refund",
 ];
 
 export const NEEDS_CANCELLATION_REASON = [
@@ -321,7 +318,7 @@ export const getNextStateForAction = (
     "Move to Self-Pay": "Payment_Pending",
   };
 
-  if (action === "Reverse Refund" || action === "Reverse Collection") {
+  if (action === "Reverse Collection") {
     return cancellationSourceState ?? "Payment_Pending";
   }
   if (action === "Reverse to Payment Pending") {

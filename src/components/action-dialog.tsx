@@ -1101,7 +1101,7 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
           {isReversal && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
               <p className="text-xs font-medium text-amber-800">
-                {action === "Reverse Refund" || action === "Reverse Collection"
+                {action === "Reverse Collection"
                   ? `This will reverse the student back to ${student.cancellationSourceState ? student.cancellationSourceState.replace(/_/g, " ") : "Payment Pending"}.`
                   : "This will reverse the student back to Payment Pending."}{" "}
                 Ensure the reason is documented for the audit trail.

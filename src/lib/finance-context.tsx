@@ -140,7 +140,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
           }
 
           /* Clear source state on reversal completion */
-          if (action === "Reverse Refund" || action === "Reverse Collection") {
+          if (action === "Reverse Collection") {
             updated.cancellationSourceState = undefined;
             updated.cancellationReasonCode = undefined;
             updated.cancellationReason = undefined;
