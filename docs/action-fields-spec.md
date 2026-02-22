@@ -123,20 +123,18 @@ All other actions (Initiate Refund, Escalate to Collections, Cancel Account, Res
 
 ### 6. Collection_Pending (FIN-04) — Owner: Finance
 
+> **One-way path:** Once in the collections flow, there is no reversal. The only exit is forward to Cancelled.
 
-| Action                | Target                      | Required Fields                                                                                           | Notes                                         |
-| --------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| Proceed to Processing | Collection_Processing       | **Reference Code** + Stripe Payment Link (optional URL) + Collection Amount (auto-calc, override) + Notes |                                               |
-| Reverse Collection    | `cancellation_source_state` | Notes                                                                                                     | Returns to original state before cancellation |
+| Action                | Target                | Required Fields                                                                                           | Notes |
+| --------------------- | --------------------- | --------------------------------------------------------------------------------------------------------- | ----- |
+| Proceed to Processing | Collection_Processing | **Reference Code** + Stripe Payment Link (optional URL) + Collection Amount (auto-calc, override) + Notes |       |
 
 
 ### 7. Collection_Processing (FIN-10) — Owner: Finance
 
-
-| Action                     | Target          | Required Fields                                                                        | Notes                                         |
-| -------------------------- | --------------- | -------------------------------------------------------------------------------------- | --------------------------------------------- |
-| Mark Settled               | Cancelled       | **Settlement Status** (settled/unsettled/n/a) + Settlement Amount (if settled) + Notes | Ref code + amount carry forward. Destructive. |
-| Reverse to Payment Pending | Payment_Pending | Notes                                                                                  | Starts from scratch                           |
+| Action       | Target    | Required Fields                                                                        | Notes                                         |
+| ------------ | --------- | -------------------------------------------------------------------------------------- | --------------------------------------------- |
+| Mark Settled | Cancelled | **Settlement Status** (settled/unsettled/n/a) + Settlement Amount (if settled) + Notes | Ref code + amount carry forward. Destructive. |
 
 
 ---

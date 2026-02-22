@@ -14,7 +14,6 @@ import {
   getCalculatorScenarioLabel,
   getPendingPayment,
   NEEDS_CANCELLATION_REASON,
-  REVERSAL_ACTIONS,
   SETTLEMENT_OPTIONS,
 } from "@/lib/finance";
 import type { CancellationReasonCode, StudentRecord } from "@/types/finance";
@@ -52,7 +51,6 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
   const [refundStep, setRefundStep] = useState(1);
 
   const isDestructive = DESTRUCTIVE_ACTIONS.includes(action);
-  const isReversal = REVERSAL_ACTIONS.includes(action);
   const needsCancellationReason = NEEDS_CANCELLATION_REASON.includes(action);
   const outstanding = Math.max(0, student.totalDue - student.totalPaid);
 
@@ -1093,18 +1091,6 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
             <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
               <p className="text-xs font-medium text-red-800">
                 This is a destructive action and cannot be easily undone.
-              </p>
-            </div>
-          )}
-
-          {/* ─── Reversal info ─── */}
-          {isReversal && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-              <p className="text-xs font-medium text-amber-800">
-                {action === "Reverse Collection"
-                  ? `This will reverse the student back to ${student.cancellationSourceState ? student.cancellationSourceState.replace(/_/g, " ") : "Payment Pending"}.`
-                  : "This will reverse the student back to Payment Pending."}{" "}
-                Ensure the reason is documented for the audit trail.
               </p>
             </div>
           )}

@@ -139,15 +139,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
               cancellationFeeAdjustReason || undefined;
           }
 
-          /* Clear source state on reversal completion */
-          if (action === "Reverse Collection") {
-            updated.cancellationSourceState = undefined;
-            updated.cancellationReasonCode = undefined;
-            updated.cancellationReason = undefined;
-            updated.cancellationFeeAdjusted = undefined;
-            updated.cancellationFeeAdjustReason = undefined;
-          }
-
           /* Update totalPaid when receiving payments */
           if (
             (action === "Mark as Paid" ||

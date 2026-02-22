@@ -262,10 +262,7 @@ export const DESTRUCTIVE_ACTIONS = [
   "Complete Refund",
 ];
 
-export const REVERSAL_ACTIONS = [
-  "Reverse Collection",
-  "Reverse to Payment Pending",
-];
+export const REVERSAL_ACTIONS: string[] = [];
 
 export const NEEDS_CANCELLATION_REASON = [
   "Initiate Refund",
@@ -317,13 +314,6 @@ export const getNextStateForAction = (
     "Cancel Account": "Cancelled",
     "Move to Self-Pay": "Payment_Pending",
   };
-
-  if (action === "Reverse Collection") {
-    return cancellationSourceState ?? "Payment_Pending";
-  }
-  if (action === "Reverse to Payment Pending") {
-    return "Payment_Pending";
-  }
 
   return transitions[action] ?? current;
 };

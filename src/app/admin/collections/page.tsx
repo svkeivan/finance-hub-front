@@ -59,7 +59,7 @@ export default function CollectionsPage() {
           <h1 className="text-2xl font-semibold text-slate-900">Collections</h1>
           <p className="mt-1 text-sm text-slate-500">
             Two-step collections pipeline: hand off pending cases to agency/interim,
-            then mark as settled. Reversals route back to Payment Pending.
+            then mark as settled. Once in the collections path, it leads only to Cancelled.
           </p>
         </div>
       </div>
@@ -171,55 +171,18 @@ export default function CollectionsPage() {
                         {daysSince(student.lastUpdated)}d
                       </td>
                       <td className="px-4 py-3.5">
-                        <div className="flex gap-2">
-                          {isPending ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActionStudent(student);
-                                  setActiveAction("Proceed to Processing");
-                                }}
-                                className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-700"
-                              >
-                                Proceed to Processing
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActionStudent(student);
-                                  setActiveAction("Reverse Collection");
-                                }}
-                                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
-                              >
-                                Reverse
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActionStudent(student);
-                                  setActiveAction("Mark Settled");
-                                }}
-                                className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-700"
-                              >
-                                Mark Settled
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActionStudent(student);
-                                  setActiveAction("Reverse to Payment Pending");
-                                }}
-                                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
-                              >
-                                Reverse
-                              </button>
-                            </>
-                          )}
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActionStudent(student);
+                            setActiveAction(
+                              isPending ? "Proceed to Processing" : "Mark Settled",
+                            );
+                          }}
+                          className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-700"
+                        >
+                          {isPending ? "Proceed to Processing" : "Mark Settled"}
+                        </button>
                       </td>
                     </motion.tr>
                   );
