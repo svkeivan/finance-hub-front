@@ -7,12 +7,18 @@ import {
   ArrowUpRight,
   Receipt,
   Search,
-  XCircle,
+  SlidersHorizontal,
+  X,
 } from "lucide-react";
 
 import { MOCK_TRANSACTIONS } from "@/data/mockTransactions";
 import { formatGBP } from "@/lib/finance";
-import type { PaymentMethod, Transaction, TransactionType } from "@/types/finance";
+import {
+  FilterSidebar,
+  FilterSection,
+  DropdownFilter,
+} from "@/components/filter-sidebar";
+import type { PaymentMethod, TransactionType } from "@/types/finance";
 
 const TYPE_LABELS: Record<TransactionType, string> = {
   deposit: "Deposit",
@@ -62,10 +68,11 @@ const ALL_STATUSES = ["completed", "pending", "failed"] as const;
 
 export default function TransactionsPage() {
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<TransactionType | "all">("all");
-  const [methodFilter, setMethodFilter] = useState<PaymentMethod | "all">("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [directionFilter, setDirectionFilter] = useState<"all" | "in" | "out">("all");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [selectedTypes, setSelectedTypes] = useState<Set<TransactionType>>(new Set());
+  const [selectedMethods, setSelectedMethods] = useState<Set<PaymentMethod>>(new Set());
+  const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(new Set());
+  const [selectedDirections, setSelectedDirections] = useState<Set<string>>(new Set());
 
   const transactions = MOCK_TRANSACTIONS;
 
@@ -83,13 +90,13 @@ export default function TransactionsPage() {
           (t.note && t.note.toLowerCase().includes(q)),
       );
     }
-    if (typeFilter !== "all") result = result.filter((t) => t.type === typeFilter);
-    if (methodFilter !== "all") result = result.filter((t) => t.method === methodFilter);
-    if (statusFilter !== "all") result = result.filter((t) => t.status === statusFilter);
-    if (directionFilter !== "all") result = result.filter((t) => t.direction === directionFilter);
+    if (selectedTypes.size > 0) result = result.filter((t) => selectedTypes.has(t.type));
+    if (selectedMethods.size > 0) result = result.filter((t) => selectedMethods.has(t.method));
+    if (selectedStatuses.size > 0) result = result.filter((t) => selectedStatuses.has(t.status));
+    if (selectedDirections.size > 0) result = result.filter((t) => selectedDirections.has(t.direction));
 
     return result;
-  }, [transactions, search, typeFilter, methodFilter, statusFilter, directionFilter]);
+  }, [transactions, search, selectedTypes, selectedMethods, selectedStatuses, selectedDirections]);
 
   const stats = useMemo(() => {
     const totalIn = transactions
@@ -108,15 +115,53 @@ export default function TransactionsPage() {
     return { totalIn, totalOut, pendingIn, pendingOut, failedCount, net: totalIn - totalOut };
   }, [transactions]);
 
-  const hasFilters =
-    search || typeFilter !== "all" || methodFilter !== "all" || statusFilter !== "all" || directionFilter !== "all";
+  const toggleType = (t: TransactionType) => {
+    setSelectedTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(t)) next.delete(t);
+      else next.add(t);
+      return next;
+    });
+  };
+
+  const toggleMethod = (m: PaymentMethod) => {
+    setSelectedMethods((prev) => {
+      const next = new Set(prev);
+      if (next.has(m)) next.delete(m);
+      else next.add(m);
+      return next;
+    });
+  };
+
+  const toggleStatus = (s: string) => {
+    setSelectedStatuses((prev) => {
+      const next = new Set(prev);
+      if (next.has(s)) next.delete(s);
+      else next.add(s);
+      return next;
+    });
+  };
+
+  const toggleDirection = (d: string) => {
+    setSelectedDirections((prev) => {
+      const next = new Set(prev);
+      if (next.has(d)) next.delete(d);
+      else next.add(d);
+      return next;
+    });
+  };
+
+  const activeFilterCount =
+    selectedTypes.size +
+    selectedMethods.size +
+    selectedStatuses.size +
+    selectedDirections.size;
 
   const clearFilters = () => {
-    setSearch("");
-    setTypeFilter("all");
-    setMethodFilter("all");
-    setStatusFilter("all");
-    setDirectionFilter("all");
+    setSelectedTypes(new Set());
+    setSelectedMethods(new Set());
+    setSelectedStatuses(new Set());
+    setSelectedDirections(new Set());
   };
 
   return (
@@ -185,9 +230,9 @@ export default function TransactionsPage() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[240px] flex-1">
+      {/* Search bar + Filters button */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             value={search}
@@ -196,73 +241,175 @@ export default function TransactionsPage() {
             className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm transition-colors focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
           />
         </div>
-
-        <select
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value as TransactionType | "all")}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700"
+        <button
+          type="button"
+          onClick={() => setFiltersOpen(true)}
+          className={`flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
+            activeFilterCount > 0
+              ? "border-indigo-300 bg-indigo-50 text-indigo-700"
+              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+          }`}
         >
-          <option value="all">All types</option>
-          {ALL_TYPES.map((t) => (
-            <option key={t} value={t}>
+          <SlidersHorizontal className="h-4 w-4" />
+          Filters
+          {activeFilterCount > 0 && (
+            <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-indigo-600 px-1.5 text-[10px] font-bold text-white">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Active filter chips */}
+      {activeFilterCount > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-slate-500">
+            {filtered.length} of {transactions.length} transaction
+            {transactions.length !== 1 ? "s" : ""}
+          </span>
+
+          {Array.from(selectedTypes).map((t) => (
+            <span
+              key={t}
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${TYPE_COLORS[t]}`}
+            >
               {TYPE_LABELS[t]}
-            </option>
+              <button
+                type="button"
+                onClick={() => toggleType(t)}
+                className="ml-0.5 rounded-full p-0.5 opacity-60 hover:opacity-100"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </span>
           ))}
-        </select>
 
-        <select
-          value={methodFilter}
-          onChange={(e) => setMethodFilter(e.target.value as PaymentMethod | "all")}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700"
-        >
-          <option value="all">All methods</option>
-          {ALL_METHODS.map((m) => (
-            <option key={m} value={m}>
+          {Array.from(selectedMethods).map((m) => (
+            <span
+              key={m}
+              className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-medium text-indigo-700"
+            >
               {m}
-            </option>
+              <button
+                type="button"
+                onClick={() => toggleMethod(m)}
+                className="ml-0.5 rounded-full p-0.5 hover:bg-indigo-100"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </span>
           ))}
-        </select>
 
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700"
-        >
-          <option value="all">All statuses</option>
-          {ALL_STATUSES.map((s) => (
-            <option key={s} value={s}>
+          {Array.from(selectedStatuses).map((s) => (
+            <span
+              key={s}
+              className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600"
+            >
               {s.charAt(0).toUpperCase() + s.slice(1)}
-            </option>
+              <button
+                type="button"
+                onClick={() => toggleStatus(s)}
+                className="ml-0.5 rounded-full p-0.5 hover:bg-slate-200"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </span>
           ))}
-        </select>
 
-        <select
-          value={directionFilter}
-          onChange={(e) => setDirectionFilter(e.target.value as "all" | "in" | "out")}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700"
-        >
-          <option value="all">All directions</option>
-          <option value="in">Money In</option>
-          <option value="out">Money Out</option>
-        </select>
+          {Array.from(selectedDirections).map((d) => (
+            <span
+              key={d}
+              className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600"
+            >
+              Money {d === "in" ? "In" : "Out"}
+              <button
+                type="button"
+                onClick={() => toggleDirection(d)}
+                className="ml-0.5 rounded-full p-0.5 hover:bg-slate-200"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </span>
+          ))}
 
-        {hasFilters && (
           <button
             type="button"
             onClick={clearFilters}
-            className="flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-50"
+            className="text-[11px] font-medium text-indigo-600 hover:text-indigo-700"
           >
-            <XCircle className="h-3.5 w-3.5" />
-            Clear
+            Clear all
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Result count */}
-      <p className="text-xs text-slate-500">
-        {filtered.length} of {transactions.length} transaction
-        {transactions.length !== 1 ? "s" : ""}
-      </p>
+      {activeFilterCount === 0 && (
+        <p className="text-xs text-slate-500">
+          {filtered.length} of {transactions.length} transaction
+          {transactions.length !== 1 ? "s" : ""}
+        </p>
+      )}
+
+      {/* Filter Sidebar */}
+      <FilterSidebar
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        title="Advanced Filters"
+        description="Filter transactions by multiple criteria."
+        activeCount={activeFilterCount}
+        onClearAll={clearFilters}
+      >
+        <FilterSection label="Transaction Type">
+          <DropdownFilter
+            placeholder="Select types..."
+            searchPlaceholder="Type..."
+            options={ALL_TYPES.map((t) => ({
+              value: t,
+              label: TYPE_LABELS[t],
+            }))}
+            selected={selectedTypes}
+            onChange={toggleType}
+          />
+        </FilterSection>
+
+        <FilterSection label="Payment Method">
+          <DropdownFilter
+            placeholder="Select methods..."
+            searchPlaceholder="Method..."
+            options={ALL_METHODS.map((m) => ({
+              value: m,
+              label: m,
+            }))}
+            selected={selectedMethods}
+            onChange={toggleMethod}
+          />
+        </FilterSection>
+
+        <FilterSection label="Status">
+          <DropdownFilter
+            placeholder="Select statuses..."
+            searchPlaceholder="Status..."
+            options={ALL_STATUSES.map((s) => ({
+              value: s,
+              label: s.charAt(0).toUpperCase() + s.slice(1),
+            }))}
+            selected={selectedStatuses}
+            onChange={toggleStatus}
+          />
+        </FilterSection>
+
+        <FilterSection label="Direction">
+          <DropdownFilter
+            placeholder="Select direction..."
+            searchPlaceholder="Direction..."
+            options={[
+              { value: "in", label: "Money In" },
+              { value: "out", label: "Money Out" },
+            ]}
+            selected={selectedDirections}
+            onChange={toggleDirection}
+          />
+        </FilterSection>
+      </FilterSidebar>
 
       {/* Transaction table */}
       {filtered.length === 0 ? (
@@ -270,7 +417,7 @@ export default function TransactionsPage() {
           <Receipt className="mx-auto h-10 w-10 text-slate-300" />
           <p className="mt-3 text-sm font-medium text-slate-700">No transactions found</p>
           <p className="mt-1 text-xs text-slate-500">
-            {hasFilters
+            {(activeFilterCount > 0 || search)
               ? "Try adjusting your filters."
               : "Transactions will appear here as financial events are recorded."}
           </p>

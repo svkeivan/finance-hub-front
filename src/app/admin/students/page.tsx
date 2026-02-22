@@ -17,8 +17,7 @@ import { StudentInsightModal } from "@/components/student-insight-modal";
 import {
   FilterSidebar,
   FilterSection,
-  CheckboxFilter,
-  RadioFilter,
+  DropdownFilter,
 } from "@/components/filter-sidebar";
 import {
   formatGBP,
@@ -74,7 +73,7 @@ export default function StudentsPage() {
   const [selectedStates, setSelectedStates] = useState<Set<FinanceState>>(
     new Set(),
   );
-  const [accessFilter, setAccessFilter] = useState<AccessLevel | "All">("All");
+  const [selectedAccess, setSelectedAccess] = useState<Set<AccessLevel>>(new Set());
   const [sortDesc, setSortDesc] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -140,8 +139,8 @@ export default function StudentsPage() {
     if (selectedStates.size > 0) {
       result = result.filter((s) => selectedStates.has(s.state));
     }
-    if (accessFilter !== "All") {
-      result = result.filter((s) => s.access === accessFilter);
+    if (selectedAccess.size > 0) {
+      result = result.filter((s) => selectedAccess.has(s.access));
     }
 
     return result.sort((a, b) => {
@@ -149,17 +148,26 @@ export default function StudentsPage() {
       const bDate = new Date(b.lastUpdated).getTime();
       return sortDesc ? bDate - aDate : aDate - bDate;
     });
-  }, [students, search, selectedMethods, selectedStates, accessFilter, sortDesc]);
+  }, [students, search, selectedMethods, selectedStates, selectedAccess, sortDesc]);
 
   const activeFilterCount =
     selectedMethods.size +
     selectedStates.size +
-    (accessFilter !== "All" ? 1 : 0);
+    selectedAccess.size;
 
   const clearAllFilters = () => {
     setSelectedMethods(new Set());
     setSelectedStates(new Set());
-    setAccessFilter("All");
+    setSelectedAccess(new Set());
+  };
+
+  const toggleAccess = (a: AccessLevel) => {
+    setSelectedAccess((prev) => {
+      const next = new Set(prev);
+      if (next.has(a)) next.delete(a);
+      else next.add(a);
+      return next;
+    });
   };
 
   const openAction = (student: StudentRecord, action: string) => {
@@ -263,18 +271,21 @@ export default function StudentsPage() {
             </span>
           ))}
 
-          {accessFilter !== "All" && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">
-              {accessFilter.replace(/_/g, " ")}
+          {Array.from(selectedAccess).map((a) => (
+            <span
+              key={a}
+              className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600"
+            >
+              {a.replace(/_/g, " ")}
               <button
                 type="button"
-                onClick={() => setAccessFilter("All")}
+                onClick={() => toggleAccess(a)}
                 className="ml-0.5 rounded-full p-0.5 hover:bg-slate-200"
               >
                 <X className="h-2.5 w-2.5" />
               </button>
             </span>
-          )}
+          ))}
 
           <button
             type="button"
@@ -302,7 +313,9 @@ export default function StudentsPage() {
         onClearAll={clearAllFilters}
       >
         <FilterSection label="Payment Method">
-          <CheckboxFilter
+          <DropdownFilter
+            placeholder="Select methods..."
+            searchPlaceholder="Method..."
             options={ALL_PAYMENT_METHODS.map((m) => ({
               value: m,
               label: m,
@@ -314,9 +327,9 @@ export default function StudentsPage() {
         </FilterSection>
 
         <FilterSection label="Finance State">
-          <CheckboxFilter
-            searchable
-            searchPlaceholder="Search states..."
+          <DropdownFilter
+            placeholder="Select states..."
+            searchPlaceholder="State..."
             options={ALL_FINANCE_STATES.map((s) => ({
               value: s,
               label: s.replace(/_/g, " "),
@@ -328,16 +341,15 @@ export default function StudentsPage() {
         </FilterSection>
 
         <FilterSection label="Access Level">
-          <RadioFilter
-            options={[
-              { value: "All" as const, label: "All levels" },
-              ...ACCESS_OPTIONS.map((o) => ({
-                value: o as typeof accessFilter,
-                label: o.replace(/_/g, " "),
-              })),
-            ]}
-            selected={accessFilter}
-            onChange={(v) => setAccessFilter(v)}
+          <DropdownFilter
+            placeholder="Select access levels..."
+            searchPlaceholder="Access level..."
+            options={ACCESS_OPTIONS.map((o) => ({
+              value: o,
+              label: o.replace(/_/g, " "),
+            }))}
+            selected={selectedAccess}
+            onChange={toggleAccess}
           />
         </FilterSection>
       </FilterSidebar>

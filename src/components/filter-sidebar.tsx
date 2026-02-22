@@ -1,8 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect } from "react";
-import { X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown, Search, X } from "lucide-react";
 
 type FilterSidebarProps = {
   open: boolean;
@@ -66,7 +66,7 @@ export function FilterSidebar({
 
             {/* Filter sections */}
             <div className="flex-1 overflow-y-auto px-6 py-5">
-              <div className="space-y-6">{children}</div>
+              <div className="space-y-5">{children}</div>
             </div>
 
             {/* Footer */}
@@ -110,107 +110,136 @@ type FilterSectionProps = {
 export function FilterSection({ label, children }: FilterSectionProps) {
   return (
     <div>
-      <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
-        {label}
-      </p>
+      <p className="mb-2 text-sm font-medium text-slate-700">{label}</p>
       {children}
     </div>
   );
 }
 
-type CheckboxFilterProps<T extends string> = {
+type DropdownFilterProps<T extends string> = {
+  placeholder: string;
+  searchPlaceholder?: string;
   options: { value: T; label: string; count?: number }[];
   selected: Set<T>;
   onChange: (value: T) => void;
-  searchable?: boolean;
-  searchPlaceholder?: string;
 };
 
-export function CheckboxFilter<T extends string>({
+export function DropdownFilter<T extends string>({
+  placeholder,
+  searchPlaceholder = "Search...",
   options,
   selected,
   onChange,
-  searchable = false,
-  searchPlaceholder = "Search...",
-}: CheckboxFilterProps<T>) {
-  const [query, setQuery] = useFilterSearch();
-  const filtered = searchable && query
-    ? options.filter((o) => o.label.toLowerCase().includes(query.toLowerCase()))
+}: DropdownFilterProps<T>) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filtered = query
+    ? options.filter((o) =>
+        o.label.toLowerCase().includes(query.toLowerCase()),
+      )
     : options;
 
+  const triggerLabel =
+    selected.size === 0
+      ? placeholder
+      : selected.size === 1
+        ? options.find((o) => selected.has(o.value))?.label ?? placeholder
+        : `${selected.size} selected`;
+
   return (
-    <div className="space-y-1">
-      {searchable && (
-        <div className="relative mb-2">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={searchPlaceholder}
-            className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm transition-colors placeholder:text-slate-400 focus:border-indigo-300 focus:bg-white focus:ring-2 focus:ring-indigo-100"
-          />
+    <div className="relative" ref={containerRef}>
+      {/* Trigger */}
+      <button
+        type="button"
+        onClick={() => setIsOpen((p) => !p)}
+        className={`flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-sm transition-colors ${
+          selected.size > 0
+            ? "border-indigo-300 bg-indigo-50/50 text-indigo-700"
+            : "border-slate-200 text-slate-500 hover:border-slate-300"
+        }`}
+      >
+        <span className="truncate">{triggerLabel}</span>
+        <ChevronDown
+          className={`ml-2 h-4 w-4 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {/* Dropdown panel */}
+      {isOpen && (
+        <div className="absolute left-0 z-10 mt-1.5 w-full rounded-lg border border-slate-200 bg-white shadow-lg">
+          {/* Search */}
+          <div className="border-b border-slate-100 p-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={searchPlaceholder}
+                autoFocus
+                className="w-full rounded-md border-0 bg-slate-50 py-2 pl-8 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
+          </div>
+
+          {/* Options */}
+          <div className="max-h-52 overflow-y-auto py-1">
+            {filtered.map((opt) => (
+              <label
+                key={opt.value}
+                className="flex cursor-pointer items-center gap-2.5 px-3 py-2 text-sm transition-colors hover:bg-slate-50"
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.has(opt.value)}
+                  onChange={() => onChange(opt.value)}
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-200"
+                />
+                <span className="flex-1 truncate text-slate-700">
+                  {opt.label}
+                </span>
+                {opt.count != null && (
+                  <span className="text-xs text-slate-400">{opt.count}</span>
+                )}
+              </label>
+            ))}
+            {filtered.length === 0 && (
+              <p className="px-3 py-4 text-center text-xs text-slate-400">
+                No matches found
+              </p>
+            )}
+          </div>
+
+          {/* Clear inside dropdown */}
+          {selected.size > 0 && (
+            <div className="border-t border-slate-100 px-3 py-2">
+              <button
+                type="button"
+                onClick={() => {
+                  for (const v of Array.from(selected)) onChange(v);
+                }}
+                className="text-xs font-medium text-indigo-600 hover:text-indigo-700"
+              >
+                Clear selection
+              </button>
+            </div>
+          )}
         </div>
       )}
-      <div className="max-h-52 space-y-0.5 overflow-y-auto">
-        {filtered.map((opt) => (
-          <label
-            key={opt.value}
-            className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors hover:bg-slate-50"
-          >
-            <input
-              type="checkbox"
-              checked={selected.has(opt.value)}
-              onChange={() => onChange(opt.value)}
-              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-200"
-            />
-            <span className="flex-1 text-slate-700">{opt.label}</span>
-            {opt.count != null && (
-              <span className="text-xs text-slate-400">{opt.count}</span>
-            )}
-          </label>
-        ))}
-        {filtered.length === 0 && (
-          <p className="px-2.5 py-3 text-xs text-slate-400">No matches</p>
-        )}
-      </div>
     </div>
   );
-}
-
-type RadioFilterProps<T extends string> = {
-  options: { value: T; label: string }[];
-  selected: T;
-  onChange: (value: T) => void;
-};
-
-export function RadioFilter<T extends string>({
-  options,
-  selected,
-  onChange,
-}: RadioFilterProps<T>) {
-  return (
-    <div className="space-y-0.5">
-      {options.map((opt) => (
-        <label
-          key={opt.value}
-          className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors hover:bg-slate-50"
-        >
-          <input
-            type="radio"
-            name={opt.value}
-            checked={selected === opt.value}
-            onChange={() => onChange(opt.value)}
-            className="border-slate-300 text-indigo-600 focus:ring-indigo-200"
-          />
-          <span className="text-slate-700">{opt.label}</span>
-        </label>
-      ))}
-    </div>
-  );
-}
-
-import { useState } from "react";
-
-function useFilterSearch(): [string, (v: string) => void] {
-  const [q, setQ] = useState("");
-  return [q, setQ];
 }
