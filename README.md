@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Finance Hub
+
+Admin dashboard for finance operations — work queues, transactions, refunds, collections, and cancellations.
+
+## Features
+
+- **Work Items** — Student finance states (Payment_Pending, Delinquent, Balance_Pending, Refund_Pending, Collection_Pending, etc.) with state-machine actions
+- **Transactions** — Deposit, instalment, refund, collection, and fee transactions
+- **Cancellations** — Agent cancellation view with refund calculator, Cost We Save logic, and cancellation reason codes (CR01–CR06)
+- **Bank Match** — Bank transfer reconciliation queue
+- **Arrears** — Payment_Pending and Delinquent work queues
+- **Refunds** — Refund_Pending and Refund_Processing flows
+- **Collections** — Collection_Pending and Collection_Processing flows
+- **Credit Pipeline** — Read-only monitoring of credit states (Credit_App_Pending, Credit_Pending, Credit_Approved, Credit_Rejected)
+- **Audit Log** — Action history and audit trail
+
+## Tech Stack
+
+- **Next.js 16** (App Router)
+- **React 19**
+- **TypeScript**
+- **Tailwind CSS v4**
+- **Recharts** — Charts and dashboards
+- **Motion** — Animations
+- **Lucide React** — Icons
 
 ## Getting Started
 
-First, run the development server:
+Install dependencies and run the dev server:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). The app redirects to `/admin/dashboard`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+# Other commands
+npm run build   # Production build
+npm run start   # Start production server
+npm run lint    # Run ESLint
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Project Structure
 
-## Learn More
+```
+src/
+├── app/              # Next.js App Router
+│   └── admin/        # Admin dashboard routes
+├── components/       # UI components (Sidebar, ActionDialog, FilterSidebar, etc.)
+├── lib/              # Finance context, state machine logic
+├── data/             # Mock data (students, transactions)
+└── types/            # TypeScript types (finance states, actions, etc.)
+docs/
+└── action-fields-spec.md   # Action fields, cancellation rules, refund calculator
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Documentation
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+See [`docs/action-fields-spec.md`](docs/action-fields-spec.md) for:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Manual work items (7 queues) and their actions
+- Cancellation reason codes and settlement status
+- Method-dependent action rules (Bank Transfer, Premium Credit, Card/DD)
+- Refund calculator logic (cool-off, digital-asset, cost-we-save)
+- Automated states and business rules
 
-## Deploy on Vercel
+## Deploy
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Deploy to [Vercel](https://vercel.com/new) or any Node.js hosting. Configure environment variables as needed for production (e.g. API keys, database).
