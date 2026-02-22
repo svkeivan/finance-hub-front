@@ -12,6 +12,7 @@ import {
   RotateCcw,
   ShieldAlert,
   Ban,
+  Receipt,
 } from "lucide-react";
 
 import { useFinance } from "@/lib/finance-context";
@@ -30,6 +31,7 @@ export function Sidebar() {
   const NAV_ITEMS: NavItem[] = [
     // { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
     { label: "Work Items", href: "/admin/students", icon: ClipboardList },
+    { label: "Transactions", href: "/admin/transactions", icon: Receipt },
     // { label: "Bank Match", href: "/admin/bank-match", icon: ArrowLeftRight, badge: queueCounts["bank-match"] },
     // { label: "Arrears", href: "/admin/arrears", icon: AlertTriangle, badge: queueCounts["arrears"] },
     // { label: "Refunds", href: "/admin/refunds", icon: RotateCcw, badge: queueCounts["refunds"] },

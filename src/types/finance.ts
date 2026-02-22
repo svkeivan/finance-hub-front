@@ -123,6 +123,30 @@ export type FinanceActionLog = {
   reference?: string;
 };
 
+export type TransactionType =
+  | "deposit"
+  | "instalment"
+  | "full_payment"
+  | "credit_funding"
+  | "refund"
+  | "collection_recovery"
+  | "cancellation_fee";
+
+export type Transaction = {
+  id: string;
+  at: string;
+  studentId: string;
+  studentName: string;
+  type: TransactionType;
+  amount: number;
+  /** "in" = money coming to AT, "out" = money going to student */
+  direction: "in" | "out";
+  method: PaymentMethod;
+  reference?: string;
+  status: "completed" | "pending" | "failed";
+  note?: string;
+};
+
 export type QueueKey =
   | "bank-match"
   | "finance-sync"

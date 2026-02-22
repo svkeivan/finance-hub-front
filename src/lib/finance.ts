@@ -155,8 +155,8 @@ const ACTION_MAP: Record<FinanceState, string[]> = {
   Balance_Pending: ["Mark as Paid", "Mark as Overdue"],
   Refund_Pending: ["Proceed to Processing"],
   Refund_Processing: ["Complete Refund"],
-  Collection_Pending: ["Proceed to Processing", "Reverse Collection"],
-  Collection_Processing: ["Mark Settled", "Reverse to Payment Pending"],
+  Collection_Pending: ["Proceed to Processing"],
+  Collection_Processing: ["Mark Settled"],
 
   Active: [],
   Payment_Complete: [],
