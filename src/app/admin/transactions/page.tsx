@@ -180,55 +180,6 @@ export default function TransactionsPage() {
         </div>
       </div>
 
-      {/* Summary KPIs */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-600">
-            Total In
-          </p>
-          <p className="mt-1.5 text-xl font-bold text-emerald-700">
-            {formatGBP(stats.totalIn)}
-          </p>
-        </div>
-        <div className="rounded-xl border border-red-100 bg-red-50 p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-red-600">
-            Total Out
-          </p>
-          <p className="mt-1.5 text-xl font-bold text-red-700">
-            {formatGBP(stats.totalOut)}
-          </p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            Net
-          </p>
-          <p className={`mt-1.5 text-xl font-bold ${stats.net >= 0 ? "text-emerald-700" : "text-red-700"}`}>
-            {formatGBP(stats.net)}
-          </p>
-        </div>
-        <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-600">
-            Pending In
-          </p>
-          <p className="mt-1.5 text-xl font-bold text-amber-700">
-            {formatGBP(stats.pendingIn)}
-          </p>
-        </div>
-        <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-600">
-            Pending Out
-          </p>
-          <p className="mt-1.5 text-xl font-bold text-amber-700">
-            {formatGBP(stats.pendingOut)}
-          </p>
-        </div>
-        <div className="rounded-xl border border-red-100 bg-red-50 p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-red-600">
-            Failed
-          </p>
-          <p className="mt-1.5 text-xl font-bold text-red-700">{stats.failedCount}</p>
-        </div>
-      </div>
 
       {/* Search bar + Filters button */}
       <div className="flex items-center gap-3">

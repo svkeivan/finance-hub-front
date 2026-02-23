@@ -36,7 +36,7 @@ export function Sidebar() {
     // { label: "Arrears", href: "/admin/arrears", icon: AlertTriangle, badge: queueCounts["arrears"] },
     // { label: "Refunds", href: "/admin/refunds", icon: RotateCcw, badge: queueCounts["refunds"] },
     // { label: "Collections", href: "/admin/collections", icon: ShieldAlert, badge: queueCounts["collections"] },
-    { label: "Cancellations", href: "/admin/cancellations", icon: Ban },
+    // { label: "Cancellations", href: "/admin/cancellations", icon: Ban },
     // { label: "Credit Pipeline", href: "/admin/finance-sync", icon: Eye, badge: queueCounts["finance-sync"] },
   ];
 
