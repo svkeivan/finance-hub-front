@@ -18,7 +18,8 @@ export type FinanceState =
   | "Collection_Processing"
   | "Balance_Pending"
   | "Credit_Pending"
-  | "Credit_Approved";
+  | "Credit_Approved"
+  | "Credit_Application_Pending";
 
 export type AccessLevel = "Full" | "Partial_Back" | "Partial" | "Blocked";
 
