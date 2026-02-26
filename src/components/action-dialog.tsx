@@ -54,7 +54,8 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
   const needsCancellationReason = NEEDS_CANCELLATION_REASON.includes(action);
   const outstanding = Math.max(0, student.totalDue - student.totalPaid);
 
-  const isRefundInit = action === "Initiate Refund";
+  const isAssessResolve = action === "Assess & Resolve";
+  const isRefundInit = action === "Initiate Refund" || isAssessResolve;
   const isPaymentAction =
     action === "Payment Received" || action === "Final Payment";
   const paymentNeedsAmount = action === "Final Payment";
@@ -94,7 +95,11 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback((resolveOutcome?: "refund" | "collection") => {
+    const effectiveAction = isAssessResolve && resolveOutcome
+      ? resolveOutcome === "refund" ? "Initiate Refund" : "Escalate to Collections"
+      : action;
+
     if (!reason.trim()) {
       notify({
         type: "error",
@@ -195,7 +200,7 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
 
     const success = applyAction({
       studentId: student.id,
-      action,
+      action: effectiveAction,
       reason,
       reference: reference || student.referenceCode || undefined,
       cancellationReasonCode: cancellationReasonCode || undefined,
@@ -209,9 +214,9 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
       refundAmount: amount ? Number(amount) : undefined,
       collectionAmount: amount ? Number(amount) : undefined,
       receivedAmount:
-        action === "Mark as Paid"
+        effectiveAction === "Mark as Paid"
           ? outstanding
-          : action === "Payment Received" && pendingPayment
+          : effectiveAction === "Payment Received" && pendingPayment
             ? pendingPayment.expectedAmount
             : paymentNeedsAmount && amount
               ? Number(amount)
@@ -221,12 +226,13 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
     if (success) {
       notify({
         type: "success",
-        text: `${student.name} — "${action}" completed successfully.`,
+        text: `${student.name} — "${effectiveAction}" completed successfully.`,
       });
       onClose();
     }
   }, [
     action,
+    isAssessResolve,
     student,
     reason,
     reference,
@@ -436,11 +442,7 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
           )}
 
           {/* ─── Financial context for other Payment_Pending & Delinquent actions ─── */}
-          {[
-            "Resume Payments",
-            "Escalate to Collections",
-            "Cancel Account",
-          ].includes(action) && (
+          {action === "Cancel Account" && (
             <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
               <div className="grid grid-cols-3 gap-3 text-sm">
                 <div>
@@ -1017,9 +1019,29 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
                       )}
                     </div>
                     <p className="text-[11px] text-slate-500">
-                      This will be submitted to Finance for review. CS cannot
-                      execute refunds.
+                      {isAssessResolve
+                        ? "Choose the outcome below. Refund routes to Finance; Collections routes to the collections team."
+                        : "This will be submitted to Finance for review. CS cannot execute refunds."}
                     </p>
+                    {/* Assess & Resolve: dual-path buttons at step 4 */}
+                    {isAssessResolve && (
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleSubmit("refund")}
+                          className="rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-violet-700"
+                        >
+                          → Send to Refund
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSubmit("collection")}
+                          className="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-red-700"
+                        >
+                          → Send to Collections
+                        </button>
+                      </div>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -1119,18 +1141,29 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
           >
             Cancel
           </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={isRefundInit && refundStep < 4}
-            className={`rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors disabled:opacity-50 ${
-              isDestructive
-                ? "bg-red-600 hover:bg-red-700"
-                : "bg-slate-900 hover:bg-slate-800"
-            }`}
-          >
-            {isRefundInit ? "Submit to Finance" : "Confirm Action"}
-          </button>
+          {!isAssessResolve && (
+            <button
+              type="button"
+              onClick={() => handleSubmit()}
+              disabled={isRefundInit && refundStep < 4}
+              className={`rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors disabled:opacity-50 ${
+                isDestructive
+                  ? "bg-red-600 hover:bg-red-700"
+                  : "bg-slate-900 hover:bg-slate-800"
+              }`}
+            >
+              {isRefundInit ? "Submit to Finance" : "Confirm Action"}
+            </button>
+          )}
+          {isAssessResolve && refundStep < 4 && (
+            <button
+              type="button"
+              onClick={() => setRefundStep((s) => Math.min(4, s + 1))}
+              className="rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-violet-700"
+            >
+              Next Step
+            </button>
+          )}
         </div>
       </motion.div>
     </motion.div>

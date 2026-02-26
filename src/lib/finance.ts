@@ -54,7 +54,6 @@ export const QUEUE_CONFIG: Record<
 export const STATE_ACCESS_LEVEL: Record<FinanceState, AccessLevel> = {
   Active: "Full",
   Balance_Pending: "Full",
-  Credit_Application_Pending: "Full",
   Credit_Pending: "Full",
   Credit_Approved: "Full",
   Credit_Rejected: "Full",
@@ -82,7 +81,6 @@ export const STATE_BADGE_CLASS: Record<FinanceState, string> = {
   Refund_Pending: "bg-violet-100 text-violet-800",
   Refund_Processing: "bg-violet-100 text-violet-800",
   Cancelled: "bg-slate-200 text-slate-700",
-  Credit_Application_Pending: "bg-purple-100 text-purple-800",
   Credit_Pending: "bg-purple-100 text-purple-800",
   Credit_Approved: "bg-green-100 text-green-800",
   Credit_Rejected: "bg-orange-100 text-orange-800",
@@ -104,7 +102,6 @@ export const STATE_ID: Record<FinanceState, string> = {
   Credit_Rejected: "FIN-08",
   Refund_Processing: "FIN-09",
   Collection_Processing: "FIN-10",
-  Credit_Application_Pending: "FIN-11",
   Balance_Pending: "FIN-12",
   Credit_Pending: "FIN-13",
   Credit_Approved: "FIN-14",
@@ -126,7 +123,6 @@ export const IS_WORK_ITEM: Record<FinanceState, boolean> = {
   Refund_Pending: true,
   Refund_Processing: true,
   Cancelled: false,
-  Credit_Application_Pending: false,
   Credit_Pending: false,
   Credit_Approved: false,
   Credit_Rejected: false,
@@ -142,16 +138,10 @@ const ACTION_MAP: Record<FinanceState, string[]> = {
   Payment_Pending: [
     "Payment Received",
     "Final Payment",
-    "Initiate Refund",
-    "Escalate to Collections",
+    "Assess & Resolve",
     "Cancel Account",
   ],
-  Delinquent: [
-    "Resume Payments",
-    "Initiate Refund",
-    "Escalate to Collections",
-    "Cancel Account",
-  ],
+  Delinquent: ["Assess & Resolve"],
   Balance_Pending: ["Mark as Paid", "Mark as Overdue"],
   Refund_Pending: ["Proceed to Processing"],
   Refund_Processing: ["Complete Refund"],
@@ -161,7 +151,6 @@ const ACTION_MAP: Record<FinanceState, string[]> = {
   Active: [],
   Payment_Complete: [],
   Cancelled: [],
-  Credit_Application_Pending: [],
   Credit_Pending: [],
   Credit_Approved: [],
   Credit_Rejected: [],
@@ -208,16 +197,12 @@ const CANCELLATION_ELIGIBLE: FinanceState[] = [
   "Active",
   "Balance_Pending",
   "Payment_Complete",
-  "Credit_Application_Pending",
   "Credit_Pending",
   "Credit_Approved",
   "Credit_Rejected",
 ];
 
-const CREDIT_SELF_PAY_STATES: FinanceState[] = [
-  "Credit_Application_Pending",
-  "Credit_Pending",
-];
+const CREDIT_SELF_PAY_STATES: FinanceState[] = ["Credit_Pending"];
 
 export const getCancellationActions = (state: FinanceState): string[] => {
   const actions: string[] = [];
@@ -256,7 +241,7 @@ export const CANCELLATION_REASON_OPTIONS: {
 
 export const DESTRUCTIVE_ACTIONS = [
   "Cancel Account",
-  "Escalate to Collections",
+  "Assess & Resolve",
   "Initiate Collection",
   "Mark Settled",
   "Complete Refund",
@@ -265,8 +250,7 @@ export const DESTRUCTIVE_ACTIONS = [
 export const REVERSAL_ACTIONS: string[] = [];
 
 export const NEEDS_CANCELLATION_REASON = [
-  "Initiate Refund",
-  "Escalate to Collections",
+  "Assess & Resolve",
   "Cancel Account",
   "Initiate Collection",
 ];

@@ -16,7 +16,6 @@ export type FinanceState =
   | "Credit_Rejected"
   | "Refund_Processing"
   | "Collection_Processing"
-  | "Credit_Application_Pending"
   | "Balance_Pending"
   | "Credit_Pending"
   | "Credit_Approved";
