@@ -95,10 +95,13 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleSubmit = useCallback((resolveOutcome?: "refund" | "collection") => {
-    const effectiveAction = isAssessResolve && resolveOutcome
-      ? resolveOutcome === "refund" ? "Initiate Refund" : "Escalate to Collections"
-      : action;
+  const handleSubmit = useCallback(() => {
+    let effectiveAction = action;
+    if (isAssessResolve && refundCalc) {
+      effectiveAction = refundCalc.cancellationFeeApplies
+        ? "Escalate to Collections"
+        : "Initiate Refund";
+    }
 
     if (!reason.trim()) {
       notify({
@@ -141,15 +144,11 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
       }
     }
 
-    /* Proceed to Processing from Refund_Pending: ref code + amount */
+    /* Proceed to Processing from Refund_Pending: amount only (ref code enters at Complete Refund) */
     if (
       action === "Proceed to Processing" &&
       student.state === "Refund_Pending"
     ) {
-      if (!reference.trim()) {
-        notify({ type: "error", text: "Reference code is required." });
-        return;
-      }
       const numAmt = Number(amount);
       if (!amount.trim() || !Number.isFinite(numAmt) || numAmt < 0) {
         notify({ type: "error", text: "Valid refund amount is required." });
@@ -157,29 +156,28 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
       }
     }
 
-    /* Proceed to Processing from Collection_Pending: ref code required */
+    /* Proceed to Processing from Collection_Pending: amount required */
     if (
       action === "Proceed to Processing" &&
       student.state === "Collection_Pending"
     ) {
-      if (!reference.trim()) {
-        notify({ type: "error", text: "Reference code is required." });
+      const numAmt = Number(amount);
+      if (!amount.trim() || !Number.isFinite(numAmt) || numAmt < 0) {
+        notify({ type: "error", text: "Valid collection amount is required." });
         return;
       }
     }
 
-    /* Mark Settled: settlement status required */
-    if (action === "Mark Settled" && !settlementStatus) {
-      notify({ type: "error", text: "Settlement status is required." });
+    /* Mark Settled: reference code required */
+    if (action === "Mark Settled" && !reference.trim()) {
+      notify({ type: "error", text: "Reference code is required." });
       return;
     }
 
-    /* Complete Refund: carry-forward confirmation */
+    /* Complete Refund: reference code required (entered at this step) */
     if (action === "Complete Refund" && !reference.trim()) {
-      if (!student.referenceCode) {
-        notify({ type: "error", text: "Reference code is required." });
-        return;
-      }
+      notify({ type: "error", text: "Reference code is required." });
+      return;
     }
 
     /* Fee adjustment reason required when overriding */
@@ -233,6 +231,7 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
   }, [
     action,
     isAssessResolve,
+    refundCalc,
     student,
     reason,
     reference,
@@ -500,33 +499,33 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
             </div>
           )}
 
-          {/* ─── Refund_Pending → Refund_Processing: Ref Code + Amount ─── */}
+          {/* ─── Refund_Pending → Refund_Processing: Finance adjusts amount ─── */}
           {action === "Proceed to Processing" &&
             student.state === "Refund_Pending" && (
               <div className="space-y-3 rounded-xl border border-violet-100 bg-violet-50/50 p-4">
                 <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-violet-500">
-                  Refund Handoff
+                  Finance Review
                 </p>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600">Total Paid</span>
-                  <span className="font-semibold text-slate-900">
-                    {formatGBP(student.totalPaid)}
-                  </span>
+                <div className="space-y-1.5 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Total Paid</span>
+                    <span className="font-semibold text-slate-900">
+                      {formatGBP(student.totalPaid)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">CS Recommendation</span>
+                    <span className="font-semibold text-violet-700">
+                      {formatGBP(
+                        calculateRefundRecommendation(student).refundableAmount,
+                      )}
+                    </span>
+                  </div>
                 </div>
                 <div>
                   <label className="mb-1.5 block text-xs font-medium text-slate-600">
-                    Reference Code <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    value={reference}
-                    onChange={(e) => setReference(e.target.value)}
-                    placeholder="Stripe ref or manual ref..."
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm transition-colors focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-slate-600">
-                    Refund Amount <span className="text-red-500">*</span>
+                    Approved Refund Amount{" "}
+                    <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
@@ -535,7 +534,7 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
                     <input
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
-                      placeholder="Auto-calculated..."
+                      placeholder="Auto-calculated from CS..."
                       type="number"
                       min="0"
                       step="0.01"
@@ -543,54 +542,40 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
                     />
                   </div>
                   <p className="mt-1 text-[11px] text-slate-500">
-                    Auto-calculated. Override if needed.
+                    Pre-filled from CS recommendation. Adjust if needed before
+                    approving.
                   </p>
                 </div>
               </div>
             )}
 
-          {/* ─── Collection_Pending → Collection_Processing: Ref + Stripe Link + Amount ─── */}
+          {/* ─── Collection_Pending → Collection_Processing: Finance approves amount ─── */}
           {action === "Proceed to Processing" &&
             student.state === "Collection_Pending" && (
               <div className="space-y-3 rounded-xl border border-red-100 bg-red-50/50 p-4">
                 <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-red-500">
-                  Collection Handoff
+                  Finance Review
                 </p>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600">Outstanding Debt</span>
-                  <span className="font-semibold text-red-700">
-                    {formatGBP(outstanding)}
-                  </span>
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-slate-600">
-                    Reference Code <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    value={reference}
-                    onChange={(e) => setReference(e.target.value)}
-                    placeholder="COL-REF-..."
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm transition-colors focus:border-red-400 focus:ring-2 focus:ring-red-100"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-slate-600">
-                    Stripe Payment Link{" "}
-                    <span className="font-normal text-slate-400">
-                      (optional)
+                <div className="space-y-1.5 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Outstanding Debt</span>
+                    <span className="font-semibold text-red-700">
+                      {formatGBP(outstanding)}
                     </span>
-                  </label>
-                  <input
-                    value={stripePaymentLink}
-                    onChange={(e) => setStripePaymentLink(e.target.value)}
-                    placeholder="https://pay.stripe.com/..."
-                    type="url"
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm transition-colors focus:border-red-400 focus:ring-2 focus:ring-red-100"
-                  />
+                  </div>
+                  {student.cancellationFeeAdjusted != null && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">CS Adjusted Fee</span>
+                      <span className="font-semibold text-slate-900">
+                        {formatGBP(student.cancellationFeeAdjusted)}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="mb-1.5 block text-xs font-medium text-slate-600">
-                    Collection Amount
+                    Approved Collection Amount{" "}
+                    <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
@@ -599,31 +584,30 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
                     <input
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
-                      placeholder="Auto-calculated..."
+                      placeholder="Auto-calculated from CS..."
                       type="number"
                       min="0"
                       step="0.01"
                       className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-7 pr-3 text-sm transition-colors focus:border-red-400 focus:ring-2 focus:ring-red-100"
                     />
                   </div>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    Pre-filled from CS submission. Adjust if needed before
+                    approving.
+                  </p>
                 </div>
               </div>
             )}
 
-          {/* ─── Mark Settled: Settlement Status (3 values) + Settlement Amount ─── */}
+          {/* ─── Mark Settled: Reference Code + Notes ─── */}
           {action === "Mark Settled" && (
             <div className="space-y-3 rounded-xl border border-red-100 bg-red-50/50 p-4">
-              {student.referenceCode && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600">Reference</span>
-                  <span className="font-mono text-xs text-slate-700">
-                    {student.referenceCode}
-                  </span>
-                </div>
-              )}
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-red-500">
+                Collection Completion
+              </p>
               {student.collectionAmount != null && (
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600">Collection Amount</span>
+                  <span className="text-slate-600">Approved Collection Amount</span>
                   <span className="font-semibold text-slate-900">
                     {formatGBP(student.collectionAmount)}
                   </span>
@@ -631,86 +615,64 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
               )}
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-slate-600">
-                  Settlement Status <span className="text-red-500">*</span>
+                  Reference Code <span className="text-red-500">*</span>
                 </label>
-                <div className="flex flex-wrap gap-3">
-                  {SETTLEMENT_OPTIONS.map((opt) => (
-                    <label
-                      key={opt.value}
-                      className="flex cursor-pointer items-center gap-2 text-xs text-slate-700"
-                    >
-                      <input
-                        type="radio"
-                        name="settlementStatus"
-                        value={opt.value}
-                        checked={settlementStatus === opt.value}
-                        onChange={(e) => setSettlementStatus(e.target.value)}
-                        className="text-red-600 focus:ring-red-200"
-                      />
-                      {opt.label}
-                    </label>
-                  ))}
-                </div>
+                <input
+                  value={reference}
+                  onChange={(e) => setReference(e.target.value)}
+                  placeholder="COL-REF-..."
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm transition-colors focus:border-red-400 focus:ring-2 focus:ring-red-100"
+                />
+                <p className="mt-1 text-[11px] text-slate-500">
+                  Enter the collection reference after processing in the
+                  payment provider.
+                </p>
               </div>
-              {settlementStatus === "settled" && (
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-slate-600">
-                    Settlement Amount
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
-                      £
-                    </span>
-                    <input
-                      value={settlementAmount}
-                      onChange={(e) => setSettlementAmount(e.target.value)}
-                      placeholder="Amount recovered..."
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-7 pr-3 text-sm transition-colors focus:border-red-400 focus:ring-2 focus:ring-red-100"
-                    />
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
-          {/* ─── Complete Refund: carry-forward display ─── */}
+          {/* ─── Complete Refund: reference code + amount display ─── */}
           {action === "Complete Refund" && (
-            <div className="space-y-2 rounded-xl border border-violet-100 bg-violet-50/50 p-4 text-sm">
-              {student.referenceCode && (
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Reference</span>
-                  <span className="font-mono text-xs text-slate-700">
-                    {student.referenceCode}
-                  </span>
-                </div>
-              )}
+            <div className="space-y-3 rounded-xl border border-violet-100 bg-violet-50/50 p-4">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-violet-500">
+                Refund Completion
+              </p>
               {student.refundAmount != null && (
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Refund Amount</span>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-600">Approved Refund Amount</span>
                   <span className="font-semibold text-violet-700">
                     {formatGBP(student.refundAmount)}
                   </span>
                 </div>
               )}
-              <p className="text-[11px] text-slate-500">
-                Reference and amount carry forward from handoff stage.
-              </p>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-slate-600">
+                  Reference Code <span className="text-red-500">*</span>
+                </label>
+                <input
+                  value={reference}
+                  onChange={(e) => setReference(e.target.value)}
+                  placeholder="Stripe ref, bank transfer ref..."
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm transition-colors focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                />
+                <p className="mt-1 text-[11px] text-slate-500">
+                  Enter the payment provider reference after executing the
+                  refund in Stripe or bank.
+                </p>
+              </div>
             </div>
           )}
 
-          {/* ─── Refund Calculator Wizard (Initiate Refund — 4 steps matching doc) ─── */}
+          {/* ─── Cancellation Wizard (Assess & Resolve / Initiate Refund) ─── */}
           {isRefundInit && refundCalc && (
             <div className="rounded-xl border border-violet-100 bg-violet-50/50 p-4">
               {/* Step indicators */}
               <div className="mb-4 flex items-center gap-1">
                 {[
-                  { step: 1, label: "Context" },
+                  { step: 1, label: "Decision" },
                   { step: 2, label: "Modules" },
-                  { step: 3, label: "Calculator" },
-                  { step: 4, label: "Confirm" },
+                  { step: 3, label: "Adjust" },
+                  { step: 4, label: "Submit" },
                 ].map(({ step, label }) => (
                   <div key={step} className="flex items-center gap-1">
                     <div
@@ -743,7 +705,7 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
               </div>
 
               <AnimatePresence mode="wait">
-                {/* Step 1: Student Context + Financial Snapshot */}
+                {/* Step 1: System Decision + Calculator Result + Financial Context */}
                 {refundStep === 1 && (
                   <motion.div
                     key="s1"
@@ -753,9 +715,68 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
                     className="space-y-3"
                   >
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-500">
-                      Student Context & Financial Snapshot
+                      System Decision & Calculator Result
                     </p>
-                    <div className="space-y-1.5 text-sm">
+
+                    {/* System decision badge */}
+                    <div
+                      className={`rounded-lg px-3 py-2.5 text-xs font-semibold ${
+                        refundCalc.cancellationFeeApplies
+                          ? "bg-red-100 text-red-700"
+                          : refundCalc.refundableAmount > 0
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-slate-200 text-slate-600"
+                      }`}
+                    >
+                      <span className="block text-[10px] uppercase tracking-wide opacity-70">
+                        System Path
+                      </span>
+                      {refundCalc.cancellationFeeApplies
+                        ? "Collection — cancellation fee applies"
+                        : "Refund — student is owed money"}
+                      <span className="ml-2 rounded bg-white/60 px-1.5 py-0.5 text-[10px]">
+                        {getCalculatorScenarioLabel(refundCalc.scenario)}
+                      </span>
+                    </div>
+
+                    {/* Calculator amounts */}
+                    <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                      <div>
+                        <p className="text-[11px] text-slate-500">Eligible</p>
+                        <p className="font-semibold text-slate-900">
+                          {formatGBP(refundCalc.eligibleRefund)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] text-slate-500">Refundable</p>
+                        <p className="font-semibold text-violet-700">
+                          {formatGBP(refundCalc.refundableAmount)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] text-slate-500">Received</p>
+                        <p className="font-semibold text-slate-900">
+                          {formatGBP(student.totalPaid)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] text-slate-500">Fee</p>
+                        <p
+                          className={`font-semibold ${refundCalc.cancellationFeeApplies ? "text-red-700" : "text-slate-400"}`}
+                        >
+                          {refundCalc.cancellationFeeApplies
+                            ? formatGBP(refundCalc.cancellationFee)
+                            : "N/A"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] text-slate-500">
+                      {refundCalc.note}
+                    </p>
+
+                    {/* Student context */}
+                    <div className="space-y-1.5 border-t border-violet-100 pt-3 text-sm">
                       <div className="flex justify-between">
                         <span className="text-slate-600">Student</span>
                         <span className="font-medium">{student.name}</span>
@@ -773,16 +794,6 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-600">Total Received</span>
-                        <span className="font-medium">
-                          {formatGBP(student.totalPaid)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Payment Method</span>
-                        <span className="font-medium">{student.method}</span>
-                      </div>
-                      <div className="flex justify-between">
                         <span className="text-slate-600">Outstanding</span>
                         <span
                           className={`font-medium ${outstanding > 0 ? "text-red-600" : "text-emerald-600"}`}
@@ -798,9 +809,9 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-600">Cool-off Period</span>
+                        <span className="text-slate-600">Cool-off</span>
                         <span className="font-medium">
-                          {student.coolOffDays} days
+                          {student.coolOffDays}d
                           {daysSince(student.enrolmentDate) <=
                           student.coolOffDays ? (
                             <span className="ml-1 text-emerald-600">
@@ -869,7 +880,7 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
                   </motion.div>
                 )}
 
-                {/* Step 3: Calculator Output */}
+                {/* Step 3: CS Adjustment */}
                 {refundStep === 3 && (
                   <motion.div
                     key="s3"
@@ -879,52 +890,14 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
                     className="space-y-3"
                   >
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-500">
-                      Refund Calculator Result
-                    </p>
-                    <div
-                      className={`rounded-lg px-3 py-2 text-xs font-semibold ${
-                        refundCalc.cancellationFeeApplies
-                          ? "bg-red-100 text-red-700"
-                          : "bg-emerald-100 text-emerald-700"
-                      }`}
-                    >
-                      Scenario:{" "}
-                      {getCalculatorScenarioLabel(refundCalc.scenario)}
-                    </div>
-                    <div className="space-y-1.5 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Eligible Refund</span>
-                        <span className="font-medium">
-                          {formatGBP(refundCalc.eligibleRefund)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">
-                          Refundable Amount
-                        </span>
-                        <span className="font-semibold text-violet-700">
-                          {formatGBP(refundCalc.refundableAmount)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">
-                          Total Received Cap
-                        </span>
-                        <span className="font-medium">
-                          {formatGBP(student.totalPaid)}
-                        </span>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-slate-500">
-                      {refundCalc.note}
+                      Adjustment
                     </p>
 
-                    {/* Cancellation Fee section */}
-                    {refundCalc.cancellationFeeApplies && (
-                      <div className="mt-2 space-y-2 border-t border-red-100 pt-3">
+                    {refundCalc.cancellationFeeApplies ? (
+                      <div className="space-y-3">
                         <div className="flex justify-between text-sm">
-                          <span className="font-medium text-red-700">
-                            Cancellation Fee
+                          <span className="text-slate-600">
+                            Default Cancellation Fee
                           </span>
                           <span className="font-semibold text-red-700">
                             {formatGBP(refundCalc.cancellationFee)}
@@ -970,11 +943,27 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
                           </div>
                         )}
                       </div>
+                    ) : (
+                      <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-3">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-600">
+                            Recommended Refund
+                          </span>
+                          <span className="font-semibold text-violet-700">
+                            {formatGBP(refundCalc.refundableAmount)}
+                          </span>
+                        </div>
+                        <p className="mt-1.5 text-[11px] text-slate-500">
+                          No adjustments needed. The system recommends this
+                          refund based on the calculator result. Finance will
+                          confirm the final amount.
+                        </p>
+                      </div>
                     )}
                   </motion.div>
                 )}
 
-                {/* Step 4: Confirmation */}
+                {/* Step 4: Submit */}
                 {refundStep === 4 && (
                   <motion.div
                     key="s4"
@@ -986,6 +975,20 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-500">
                       Submission Summary
                     </p>
+
+                    {/* Path decision */}
+                    <div
+                      className={`rounded-lg px-3 py-2 text-xs font-semibold ${
+                        refundCalc.cancellationFeeApplies
+                          ? "bg-red-100 text-red-700"
+                          : "bg-emerald-100 text-emerald-700"
+                      }`}
+                    >
+                      {refundCalc.cancellationFeeApplies
+                        ? "→ Collection Pending"
+                        : "→ Refund Pending"}
+                    </div>
+
                     <div className="space-y-1.5 text-sm">
                       <div className="flex justify-between">
                         <span className="text-slate-600">Scenario</span>
@@ -1019,29 +1022,10 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
                       )}
                     </div>
                     <p className="text-[11px] text-slate-500">
-                      {isAssessResolve
-                        ? "Choose the outcome below. Refund routes to Finance; Collections routes to the collections team."
-                        : "This will be submitted to Finance for review. CS cannot execute refunds."}
+                      This will be submitted to Finance for review. The system
+                      has determined the path automatically based on the
+                      calculation.
                     </p>
-                    {/* Assess & Resolve: dual-path buttons at step 4 */}
-                    {isAssessResolve && (
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleSubmit("refund")}
-                          className="rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-violet-700"
-                        >
-                          → Send to Refund
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleSubmit("collection")}
-                          className="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-red-700"
-                        >
-                          → Send to Collections
-                        </button>
-                      </div>
-                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -1141,29 +1125,18 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
           >
             Cancel
           </button>
-          {!isAssessResolve && (
-            <button
-              type="button"
-              onClick={() => handleSubmit()}
-              disabled={isRefundInit && refundStep < 4}
-              className={`rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors disabled:opacity-50 ${
-                isDestructive
-                  ? "bg-red-600 hover:bg-red-700"
-                  : "bg-slate-900 hover:bg-slate-800"
-              }`}
-            >
-              {isRefundInit ? "Submit to Finance" : "Confirm Action"}
-            </button>
-          )}
-          {isAssessResolve && refundStep < 4 && (
-            <button
-              type="button"
-              onClick={() => setRefundStep((s) => Math.min(4, s + 1))}
-              className="rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-violet-700"
-            >
-              Next Step
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => handleSubmit()}
+            disabled={isRefundInit && refundStep < 4}
+            className={`rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors disabled:opacity-50 ${
+              isDestructive
+                ? "bg-red-600 hover:bg-red-700"
+                : "bg-slate-900 hover:bg-slate-800"
+            }`}
+          >
+            {isRefundInit ? "Submit to Finance" : "Confirm Action"}
+          </button>
         </div>
       </motion.div>
     </motion.div>
