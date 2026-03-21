@@ -7,12 +7,12 @@ import {
   LayoutDashboard,
   Landmark,
   ArrowLeftRight,
-  Eye,
   AlertTriangle,
   RotateCcw,
   ShieldAlert,
   Ban,
   Receipt,
+  ExternalLink,
 } from "lucide-react";
 
 import { useFinance } from "@/lib/finance-context";
@@ -102,6 +102,13 @@ export function Sidebar() {
             </p>
           </div>
         </div>
+        <Link
+          href="/admin/profile"
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-300 transition-colors hover:border-slate-600 hover:bg-slate-800/60 hover:text-slate-200"
+        >
+          View full profile
+          <ExternalLink className="h-3.5 w-3.5" />
+        </Link>
       </div>
     </aside>
   );
