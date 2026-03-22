@@ -129,7 +129,17 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
           if (isCancellationEntry) {
             updated.cancellationSourceState = row.state;
             updated.cancellationReasonCode = cancellationReasonCode;
-            updated.cancellationReason = cancellationReason || reason;
+            updated.cancellationReason =
+              cancellationReason?.trim() || undefined;
+          }
+
+          /* CS notes from Assess & Resolve / Initiate Refund / Initiate Collection */
+          if (
+            nextState === "Refund_Pending" ||
+            nextState === "Collection_Pending"
+          ) {
+            const n = reason.trim();
+            updated.submissionNotes = n || undefined;
           }
 
           /* Store fee adjustments */

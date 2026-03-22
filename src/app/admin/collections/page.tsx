@@ -5,7 +5,10 @@ import { AnimatePresence, motion } from "motion/react";
 import { ShieldAlert, Clock } from "lucide-react";
 
 import { useFinance } from "@/lib/finance-context";
-import { ActionDialog } from "@/components/action-dialog";
+import {
+  ActionDialog,
+  PriorStepSubmissionCallout,
+} from "@/components/action-dialog";
 import {
   filterByQueue,
   formatGBP,
@@ -153,6 +156,15 @@ export default function CollectionsPage() {
                           )}
                         </p>
                         <p className="mt-0.5 text-xs text-slate-500">{student.email}</p>
+                        {isPending &&
+                          (student.submissionNotes || student.cancellationReason) && (
+                            <div className="mt-2 max-w-xl">
+                              <PriorStepSubmissionCallout
+                                student={student}
+                                tone="red"
+                              />
+                            </div>
+                          )}
                       </td>
                       <td className="px-4 py-3.5">
                         <span

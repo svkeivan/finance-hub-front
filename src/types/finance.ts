@@ -93,6 +93,8 @@ export type StudentRecord = {
   cancellationReasonCode?: CancellationReasonCode;
   /** Free-text cancellation note (required if reason is "Other" / CR06) */
   cancellationReason?: string;
+  /** CS notes from the step that submitted the case to Refund_Pending / Collection_Pending */
+  submissionNotes?: string;
   /** Default cancellation fee, adjustable by CS with reason */
   cancellationFeeDefault?: number;
   /** Adjusted cancellation fee (if CS adjusted) */

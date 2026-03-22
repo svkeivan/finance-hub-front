@@ -33,7 +33,7 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     method: "DD Pay Full",
     state: "Active",
     access: "Full",
-    totalPaid: 1800,
+    totalPaid: 1400,
     totalDue: 1800,
     modulesAccessed: 6,
     enrolmentDate: "2026-01-01",
@@ -43,7 +43,7 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     coolOffDays: 14,
     modules: makeModules(6),
     coursePackage: "Plumbing Level 2",
-    depositAmount: 1800,
+    depositAmount: 1400,
   },
   {
     id: "STU002",
@@ -96,7 +96,7 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     method: "Bank Transfer",
     state: "Active",
     access: "Full",
-    totalPaid: 950,
+    totalPaid: 650,
     totalDue: 950,
     modulesAccessed: 7,
     enrolmentDate: "2025-10-01",
@@ -106,7 +106,7 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     coolOffDays: 14,
     modules: makeModules(7),
     coursePackage: "Gas Safety Level 2",
-    depositAmount: 950,
+    depositAmount: 650,
   },
   {
     id: "STU005",
@@ -339,7 +339,7 @@ export const MOCK_STUDENTS: StudentRecord[] = [
   },
 
   /* ════════════════════════════════════════════════
-     BALANCE_PENDING (FIN-12) — one per method
+     BALANCE_PENDING (FIN-12) — Bank Transfer & DD only (no manual actions for DD)
      ════════════════════════════════════════════════ */
   {
     id: "STU016",
@@ -364,7 +364,7 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     id: "STU017",
     name: "Charlotte Evans",
     email: "charlotte.evans@example.com",
-    method: "Bank Transfer",
+    method: "DD Instalments",
     state: "Balance_Pending",
     access: "Full",
     totalPaid: 500,
@@ -377,14 +377,17 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     coolOffDays: 14,
     modules: makeModules(0),
     coursePackage: "Plumbing Level 2",
-    depositAmount: 500,
+    depositAmount: 200,
+    totalInstalments: 16,
+    paidInstalments: 3,
+    instalmentAmount: 100,
   },
   {
     id: "STU018",
     name: "Kevin O'Brien",
     email: "kevin.obrien@example.com",
     method: "Card Instalments",
-    state: "Balance_Pending",
+    state: "Active",
     access: "Full",
     totalPaid: 900,
     totalDue: 1200,
@@ -405,7 +408,7 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     id: "STU019",
     name: "Samantha Lee",
     email: "samantha.lee@example.com",
-    method: "DD Instalments",
+    method: "Bank Transfer",
     state: "Balance_Pending",
     access: "Full",
     totalPaid: 700,
@@ -418,10 +421,7 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     coolOffDays: 14,
     modules: makeModules(5),
     coursePackage: "Electrical Level 2",
-    depositAmount: 200,
-    totalInstalments: 9,
-    paidInstalments: 5,
-    instalmentAmount: 100,
+    depositAmount: 700,
   },
   {
     id: "STU020",
@@ -447,7 +447,7 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     name: "Fatima Youssef",
     email: "fatima.youssef@example.com",
     method: "Premium Credit",
-    state: "Balance_Pending",
+    state: "Active",
     access: "Full",
     totalPaid: 250,
     totalDue: 1400,
@@ -489,6 +489,8 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     cancellationSourceState: "Active",
     cancellationReasonCode: "CR01",
     cancellationReason: "Student requested cancellation during cool-off",
+    submissionNotes:
+      "Student emailed 9 Feb; confirmed intent to cancel within cool-off window.",
   },
   {
     id: "STU023",
@@ -513,6 +515,10 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     instalmentAmount: 100,
     cancellationSourceState: "Payment_Pending",
     cancellationReasonCode: "CR02",
+    cancellationReason:
+      "CR02 — Student requested (post cool-off)",
+    submissionNotes:
+      "Spoke with student 12 Feb — work schedule change; requested refund per policy.",
   },
   {
     id: "STU024",
@@ -535,6 +541,8 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     cancellationSourceState: "Active",
     cancellationReasonCode: "CR01",
     cancellationReason: "Within cool-off, wants full refund",
+    submissionNotes:
+      "No modules started; package paid in full — eligible for cool-off refund path.",
   },
   {
     id: "STU025",
@@ -556,6 +564,9 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     depositAmount: 950,
     cancellationSourceState: "Payment_Complete",
     cancellationReasonCode: "CR04",
+    cancellationReason: "CR04 — Compassionate / medical",
+    submissionNotes:
+      "Medical certificate on file; student cannot continue training this term.",
   },
   {
     id: "STU026",
@@ -577,6 +588,9 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     depositAmount: 250,
     cancellationSourceState: "Credit_Approved",
     cancellationReasonCode: "CR05",
+    cancellationReason: "CR05 — Course transfer / swap",
+    submissionNotes:
+      "Transferring to alternative provider; PCL agreement to be closed.",
   },
 
   /* ── Refund_Pending from Delinquent (Assess & Resolve → Send to Refund) ── */
@@ -604,6 +618,8 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     cancellationSourceState: "Delinquent",
     cancellationReasonCode: "CR03",
     cancellationReason: "Non-payment / debt — assessed from delinquent state",
+    submissionNotes:
+      "Assess & Resolve 14 Feb: agreed refund path after arrears review; student accepts partial settlement.",
   },
 
   /* ════════════════════════════════════════════════
@@ -747,6 +763,9 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     instalmentAmount: 100,
     cancellationSourceState: "Delinquent",
     cancellationReasonCode: "CR03",
+    cancellationReason: "CR03 — Non-payment / debt",
+    submissionNotes:
+      "Escalated from delinquent 11 Feb; fee scenario — hand to collections.",
   },
   {
     id: "STU033",
@@ -771,6 +790,9 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     instalmentAmount: 100,
     cancellationSourceState: "Delinquent",
     cancellationReasonCode: "CR03",
+    cancellationReason: "CR03 — Non-payment / debt",
+    submissionNotes:
+      "DD failures logged; student unresponsive to contact attempts since Jan.",
   },
   {
     id: "STU034",
@@ -792,6 +814,9 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     depositAmount: 0,
     cancellationSourceState: "Delinquent",
     cancellationReasonCode: "CR03",
+    cancellationReason: "CR03 — Non-payment / debt",
+    submissionNotes:
+      "No deposit collected; partial access revoked pending full payment.",
   },
   {
     id: "STU035",
@@ -813,6 +838,9 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     depositAmount: 300,
     cancellationSourceState: "Payment_Pending",
     cancellationReasonCode: "CR03",
+    cancellationReason: "CR03 — Non-payment / debt",
+    submissionNotes:
+      "Bank transfer instalments stopped; outstanding balance confirmed with student.",
   },
   {
     id: "STU036",
@@ -834,6 +862,9 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     depositAmount: 250,
     cancellationSourceState: "Active",
     cancellationReasonCode: "CR03",
+    cancellationReason: "CR03 — Non-payment / debt",
+    submissionNotes:
+      "PCL drawdown stalled; student to pay cancellation fee per calculator.",
   },
 
   /* ════════════════════════════════════════════════
@@ -1071,7 +1102,7 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     email: "sophie.williams@example.com",
     method: "Card Instalments",
     state: "Cancelled",
-    access: "Partial",
+    access: "Blocked",
     totalPaid: 450,
     totalDue: 1200,
     modulesAccessed: 2,
@@ -1093,7 +1124,7 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     email: "liam.wright@example.com",
     method: "DD Instalments",
     state: "Cancelled",
-    access: "Partial",
+    access: "Blocked",
     totalPaid: 600,
     totalDue: 1200,
     modulesAccessed: 3,
@@ -1115,7 +1146,7 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     email: "maya.singh@example.com",
     method: "DD Pay Full",
     state: "Cancelled",
-    access: "Partial",
+    access: "Blocked",
     totalPaid: 1500,
     totalDue: 1500,
     modulesAccessed: 0,
@@ -1134,7 +1165,7 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     email: "jack.turner@example.com",
     method: "Bank Transfer",
     state: "Cancelled",
-    access: "Partial",
+    access: "Blocked",
     totalPaid: 300,
     totalDue: 950,
     modulesAccessed: 1,
@@ -1153,7 +1184,7 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     email: "sara.nouri@example.com",
     method: "Premium Credit",
     state: "Cancelled",
-    access: "Partial",
+    access: "Blocked",
     totalPaid: 250,
     totalDue: 1400,
     modulesAccessed: 2,
@@ -1174,7 +1205,7 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     email: "rhys.morgan@example.com",
     method: "Card Instalments",
     state: "Cancelled",
-    access: "Partial",
+    access: "Blocked",
     totalPaid: 450,
     totalDue: 1200,
     modulesAccessed: 2,
@@ -1202,7 +1233,7 @@ export const MOCK_STUDENTS: StudentRecord[] = [
     email: "priya.desai@example.com",
     method: "DD Instalments",
     state: "Cancelled",
-    access: "Partial",
+    access: "Blocked",
     totalPaid: 400,
     totalDue: 1100,
     modulesAccessed: 3,

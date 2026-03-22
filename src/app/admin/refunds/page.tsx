@@ -5,7 +5,10 @@ import { AnimatePresence, motion } from "motion/react";
 import { RotateCcw, Clock } from "lucide-react";
 
 import { useFinance } from "@/lib/finance-context";
-import { ActionDialog } from "@/components/action-dialog";
+import {
+  ActionDialog,
+  PriorStepSubmissionCallout,
+} from "@/components/action-dialog";
 import {
   filterByQueue,
   formatGBP,
@@ -179,6 +182,16 @@ export default function RefundsPage() {
                               {recommendation.note}
                             </p>
                           </div>
+
+                          {(student.submissionNotes ||
+                            student.cancellationReason) && (
+                            <div className="mt-3">
+                              <PriorStepSubmissionCallout
+                                student={student}
+                                tone="violet"
+                              />
+                            </div>
+                          )}
                         </div>
 
                         <div className="flex gap-2 border-t border-slate-100 px-5 py-3">

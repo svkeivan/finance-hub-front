@@ -62,7 +62,7 @@ export const STATE_ACCESS_LEVEL: Record<FinanceState, AccessLevel> = {
   Payment_Pending: "Partial_Back",
   Refund_Pending: "Partial_Back",
   Refund_Processing: "Partial_Back",
-  Cancelled: "Partial",
+  Cancelled: "Blocked",
   Delinquent: "Blocked",
   Collection_Pending: "Blocked",
   Collection_Processing: "Blocked",
@@ -112,13 +112,13 @@ export const STATE_ID: Record<FinanceState, string> = {
 
 /* ───────────────────────────────────────────────
    Work item flag — states that need manual action
-   (from Manual Finance Work Items doc)
-   7 work items only
+   (from Manual Finance Work Items doc).
+   Payment_Pending is excluded (no manual actions; automation only).
    ─────────────────────────────────────────────── */
 
 export const IS_WORK_ITEM: Record<FinanceState, boolean> = {
   Active: false,
-  Payment_Pending: true,
+  Payment_Pending: false,
   Delinquent: true,
   Collection_Pending: true,
   Collection_Processing: true,
@@ -139,12 +139,8 @@ export const IS_WORK_ITEM: Record<FinanceState, boolean> = {
    ─────────────────────────────────────────────── */
 
 const ACTION_MAP: Record<FinanceState, string[]> = {
-  Payment_Pending: [
-    "Payment Received",
-    "Final Payment",
-    "Assess & Resolve",
-    "Cancel Account",
-  ],
+  /** No manual actions — automation / process moves to Active or Delinquent. */
+  Payment_Pending: [],
   Delinquent: ["Assess & Resolve"],
   Balance_Pending: ["Mark as Paid", "Mark as Overdue"],
   Refund_Pending: ["Proceed to Processing"],
@@ -164,19 +160,23 @@ const ACTION_MAP: Record<FinanceState, string[]> = {
 /* ───────────────────────────────────────────────
    Method-restricted actions
    
-   Card/DD instalments and DD Pay Full auto-detect
-   payments via Stripe webhooks / DD system.
+   Card instalments and DD Pay Full auto-detect payments via
+   Stripe webhooks / DD system.
    
-   Bank Transfer always needs manual confirmation.
-   Premium Credit (PCL) needs manual confirmation
-   in Balance_Pending — the credit company sends a
-   lump sum to AT's bank account after approval.
+   Payment_Pending: no manual work items for any method (wait for
+   payment outcome → Active, or non-payment → Delinquent, per process).
+   
+   Balance_Pending applies only to Bank Transfer and Direct Debit (DD Pay Full,
+   DD Instalments). Manual actions there are Bank Transfer only — DD is confirmed
+   automatically when the DD run succeeds.
+   
+   Bank Transfer always needs manual confirmation (e.g. Mark as Paid / Overdue).
    ─────────────────────────────────────────────── */
 
 const ACTION_ALLOWED_METHODS: Record<string, PaymentMethod[]> = {
-  "Payment Received": ["Bank Transfer"],
-  "Final Payment": ["Bank Transfer"],
-  "Mark as Paid": ["Bank Transfer", "Premium Credit"],
+  /** Balance_Pending: bank match queue — BT only */
+  "Mark as Paid": ["Bank Transfer"],
+  "Mark as Overdue": ["Bank Transfer"],
 };
 
 export const getAvailableActions = (

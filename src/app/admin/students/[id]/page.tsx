@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
+import { PriorStepSubmissionCallout } from "@/components/action-dialog";
 import { useFinance } from "@/lib/finance-context";
 import { formatGBP, STATE_BADGE_CLASS } from "@/lib/finance";
 
@@ -76,6 +77,19 @@ export default function StudentProfilePage() {
               </div>
             ))}
           </div>
+
+          {(student.state === "Refund_Pending" ||
+            student.state === "Collection_Pending") &&
+            (student.submissionNotes || student.cancellationReason) && (
+              <div className="mb-4">
+                <PriorStepSubmissionCallout
+                  student={student}
+                  tone={
+                    student.state === "Collection_Pending" ? "red" : "violet"
+                  }
+                />
+              </div>
+            )}
 
           <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
             <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">

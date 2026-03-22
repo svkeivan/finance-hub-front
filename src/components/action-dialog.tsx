@@ -24,6 +24,49 @@ type ActionDialogProps = {
   onClose: () => void;
 };
 
+/** CS context captured when the case was submitted to Refund / Collection pending */
+export function PriorStepSubmissionCallout({
+  student,
+  tone = "slate",
+}: {
+  student: StudentRecord;
+  tone?: "slate" | "violet" | "red";
+}) {
+  if (!student.submissionNotes && !student.cancellationReason) return null;
+  const border =
+    tone === "violet"
+      ? "border-violet-200/90"
+      : tone === "red"
+        ? "border-red-200/90"
+        : "border-slate-200";
+  const label =
+    tone === "violet"
+      ? "text-violet-600"
+      : tone === "red"
+        ? "text-red-600"
+        : "text-slate-500";
+
+  return (
+    <div className={`rounded-lg border ${border} bg-white/90 p-3`}>
+      <p className={`text-[11px] font-semibold uppercase tracking-wide ${label}`}>
+        From prior CS step
+      </p>
+      {student.cancellationReason ? (
+        <p className="mt-2 text-sm text-slate-700">
+          <span className="font-medium text-slate-500">Cancellation context: </span>
+          {student.cancellationReason}
+        </p>
+      ) : null}
+      {student.submissionNotes ? (
+        <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">
+          <span className="font-medium text-slate-500">Notes: </span>
+          {student.submissionNotes}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
   const { applyAction, notify } = useFinance();
   const [reason, setReason] = useState("");
@@ -506,6 +549,7 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
                 <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-violet-500">
                   Finance Review
                 </p>
+                <PriorStepSubmissionCallout student={student} tone="violet" />
                 <div className="space-y-1.5 text-sm">
                   <div className="flex justify-between">
                     <span className="text-slate-600">Total Paid</span>
@@ -556,6 +600,7 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
                 <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-red-500">
                   Finance Review
                 </p>
+                <PriorStepSubmissionCallout student={student} tone="red" />
                 <div className="space-y-1.5 text-sm">
                   <div className="flex justify-between">
                     <span className="text-slate-600">Outstanding Debt</span>
@@ -670,8 +715,8 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
               <div className="mb-4 flex items-center gap-1">
                 {[
                   { step: 1, label: "Decision" },
-                  { step: 2, label: "Modules" },
-                  { step: 3, label: "Adjust" },
+                  { step: 2, label: "Modules & adjust" },
+                  { step: 3, label: "Reason & notes" },
                   { step: 4, label: "Submit" },
                 ].map(({ step, label }) => (
                   <div key={step} className="flex items-center gap-1">
@@ -877,10 +922,84 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
                         {(student.digitalAssetPct * 100).toFixed(0)}%
                       </span>
                     </div>
+
+                    <div className="space-y-3 border-t border-violet-100 pt-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-500">
+                        Adjustment
+                      </p>
+
+                      {refundCalc.cancellationFeeApplies ? (
+                        <div className="space-y-3">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-slate-600">
+                              Default Cancellation Fee
+                            </span>
+                            <span className="font-semibold text-red-700">
+                              {formatGBP(refundCalc.cancellationFee)}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-red-600">
+                            Eligible refund exceeds total received. No refund
+                            issued — cancellation fee collection required.
+                          </p>
+                          <div>
+                            <label className="mb-1 block text-[11px] font-medium text-slate-600">
+                              Adjust Fee (optional)
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+                                £
+                              </span>
+                              <input
+                                value={feeOverride}
+                                onChange={(e) => setFeeOverride(e.target.value)}
+                                placeholder={String(refundCalc.cancellationFee)}
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-7 pr-3 text-sm transition-colors focus:border-red-400 focus:ring-2 focus:ring-red-100"
+                              />
+                            </div>
+                          </div>
+                          {feeOverride && (
+                            <div>
+                              <label className="mb-1 block text-[11px] font-medium text-slate-600">
+                                Reason for Adjustment{" "}
+                                <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                value={feeAdjustReason}
+                                onChange={(e) =>
+                                  setFeeAdjustReason(e.target.value)
+                                }
+                                placeholder="Reason for changing the fee..."
+                                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm transition-colors focus:border-red-400 focus:ring-2 focus:ring-red-100"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-3">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-slate-600">
+                              Recommended Refund
+                            </span>
+                            <span className="font-semibold text-violet-700">
+                              {formatGBP(refundCalc.refundableAmount)}
+                            </span>
+                          </div>
+                          <p className="mt-1.5 text-[11px] text-slate-500">
+                            No fee adjustments needed. The system recommends
+                            this refund based on the calculator result. Finance
+                            will confirm the final amount.
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </motion.div>
                 )}
 
-                {/* Step 3: CS Adjustment */}
+                {/* Step 3: Cancellation reason + notes (inside wizard, not below) */}
                 {refundStep === 3 && (
                   <motion.div
                     key="s3"
@@ -890,76 +1009,64 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
                     className="space-y-3"
                   >
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-500">
-                      Adjustment
+                      Reason and notes
                     </p>
 
-                    {refundCalc.cancellationFeeApplies ? (
+                    {needsCancellationReason && (
                       <div className="space-y-3">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-slate-600">
-                            Default Cancellation Fee
-                          </span>
-                          <span className="font-semibold text-red-700">
-                            {formatGBP(refundCalc.cancellationFee)}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-red-600">
-                          Eligible refund exceeds total received. No refund
-                          issued — cancellation fee collection required.
-                        </p>
                         <div>
-                          <label className="mb-1 block text-[11px] font-medium text-slate-600">
-                            Adjust Fee (optional)
+                          <label className="mb-1.5 block text-xs font-medium text-slate-600">
+                            Cancellation Reason{" "}
+                            <span className="text-red-500">*</span>
                           </label>
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
-                              £
-                            </span>
-                            <input
-                              value={feeOverride}
-                              onChange={(e) => setFeeOverride(e.target.value)}
-                              placeholder={String(refundCalc.cancellationFee)}
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-7 pr-3 text-sm transition-colors focus:border-red-400 focus:ring-2 focus:ring-red-100"
-                            />
-                          </div>
+                          <select
+                            value={cancellationReasonCode}
+                            onChange={(e) =>
+                              setCancellationReasonCode(
+                                e.target.value as CancellationReasonCode | "",
+                              )
+                            }
+                            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm transition-colors focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                          >
+                            <option value="">Select a reason...</option>
+                            {CANCELLATION_REASON_OPTIONS.map((opt) => (
+                              <option key={opt.code} value={opt.code}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
                         </div>
-                        {feeOverride && (
+                        {cancellationReasonCode === "CR06" && (
                           <div>
-                            <label className="mb-1 block text-[11px] font-medium text-slate-600">
-                              Reason for Adjustment{" "}
+                            <label className="mb-1.5 block text-xs font-medium text-slate-600">
+                              Specify Reason{" "}
                               <span className="text-red-500">*</span>
                             </label>
                             <input
-                              value={feeAdjustReason}
+                              value={cancellationReasonText}
                               onChange={(e) =>
-                                setFeeAdjustReason(e.target.value)
+                                setCancellationReasonText(e.target.value)
                               }
-                              placeholder="Reason for changing the fee..."
-                              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm transition-colors focus:border-red-400 focus:ring-2 focus:ring-red-100"
+                              placeholder="Enter the specific cancellation reason..."
+                              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm transition-colors focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                             />
                           </div>
                         )}
                       </div>
-                    ) : (
-                      <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-3">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-slate-600">
-                            Recommended Refund
-                          </span>
-                          <span className="font-semibold text-violet-700">
-                            {formatGBP(refundCalc.refundableAmount)}
-                          </span>
-                        </div>
-                        <p className="mt-1.5 text-[11px] text-slate-500">
-                          No adjustments needed. The system recommends this
-                          refund based on the calculator result. Finance will
-                          confirm the final amount.
-                        </p>
-                      </div>
                     )}
+
+                    <div>
+                      <label className="mb-1.5 block text-xs font-medium text-slate-600">
+                        Notes <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        placeholder="Context, communication log, or reason for this action..."
+                        rows={3}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm transition-colors focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                      />
+                    </div>
                   </motion.div>
                 )}
 
@@ -1052,8 +1159,8 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
             </div>
           )}
 
-          {/* ─── Cancellation Reason: Dropdown + Other free text ─── */}
-          {needsCancellationReason && (
+          {/* ─── Cancellation Reason (non-wizard actions only) ─── */}
+          {needsCancellationReason && !isRefundInit && (
             <div className="space-y-3">
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-slate-600">
@@ -1101,19 +1208,21 @@ export function ActionDialog({ student, action, onClose }: ActionDialogProps) {
             </div>
           )}
 
-          {/* ─── Notes / Reason (always) ─── */}
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-600">
-              Notes <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Context, communication log, or reason for this action..."
-              rows={3}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm transition-colors focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
-            />
-          </div>
+          {/* ─── Notes (wizard collects this on step 3 for refund flows) ─── */}
+          {!isRefundInit && (
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">
+                Notes <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Context, communication log, or reason for this action..."
+                rows={3}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm transition-colors focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
+          )}
         </div>
 
         {/* Footer */}
