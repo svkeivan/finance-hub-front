@@ -133,6 +133,25 @@ export const IS_WORK_ITEM: Record<FinanceState, boolean> = {
   Balance_Pending: true,
 };
 
+/** Six manual-action queues on the Work Items board (display order). */
+export const WORK_ITEM_BOARD: readonly {
+  state: FinanceState;
+  label: string;
+}[] = [
+  { state: "Delinquent", label: "Delinquent" },
+  { state: "Refund_Pending", label: "Refund Pending" },
+  { state: "Refund_Processing", label: "Refund Processing" },
+  { state: "Collection_Pending", label: "Collections Pending" },
+  { state: "Collection_Processing", label: "Collections Processing" },
+  { state: "Balance_Pending", label: "Balance Pending" },
+];
+
+/** Trade label parsed from course package (e.g. "Plumbing Level 2" → "Plumbing"). */
+export function tradeFromCoursePackage(coursePackage: string): string {
+  const m = coursePackage.match(/^(.+?)\s+Level\s+/i);
+  return m ? m[1].trim() : coursePackage;
+}
+
 /* ───────────────────────────────────────────────
    Available MANUAL actions per state
    Based on Manual Finance Work Items doc

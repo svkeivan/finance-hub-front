@@ -8,21 +8,20 @@ import {
   X,
   ChevronDown,
   MoreVertical,
-  SlidersHorizontal,
   ExternalLink,
 } from "lucide-react";
 
 import { useFinance } from "@/lib/finance-context";
 import { ActionDialog } from "@/components/action-dialog";
-import {
-  FilterSidebar,
-  FilterSection,
-  DropdownFilter,
-} from "@/components/filter-sidebar";
+import { DropdownFilter } from "@/components/filter-sidebar";
 import {
   formatGBP,
   getAvailableActions,
+  IS_WORK_ITEM,
   STATE_BADGE_CLASS,
+  STATE_ID,
+  tradeFromCoursePackage,
+  WORK_ITEM_BOARD,
 } from "@/lib/finance";
 import type {
   AccessLevel,
@@ -74,8 +73,9 @@ export default function StudentsPage() {
     new Set(),
   );
   const [selectedAccess, setSelectedAccess] = useState<Set<AccessLevel>>(new Set());
+  const [selectedPackages, setSelectedPackages] = useState<Set<string>>(new Set());
+  const [selectedTrades, setSelectedTrades] = useState<Set<string>>(new Set());
   const [sortDesc, setSortDesc] = useState(true);
-  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [selectedStudent, setSelectedStudent] = useState<StudentRecord | null>(
     null,
@@ -139,23 +139,44 @@ export default function StudentsPage() {
     if (selectedAccess.size > 0) {
       result = result.filter((s) => selectedAccess.has(s.access));
     }
+    if (selectedPackages.size > 0) {
+      result = result.filter((s) => selectedPackages.has(s.coursePackage));
+    }
+    if (selectedTrades.size > 0) {
+      result = result.filter((s) =>
+        selectedTrades.has(tradeFromCoursePackage(s.coursePackage)),
+      );
+    }
 
     return result.sort((a, b) => {
       const aDate = new Date(a.lastUpdated).getTime();
       const bDate = new Date(b.lastUpdated).getTime();
       return sortDesc ? bDate - aDate : aDate - bDate;
     });
-  }, [students, search, selectedMethods, selectedStates, selectedAccess, sortDesc]);
+  }, [
+    students,
+    search,
+    selectedMethods,
+    selectedStates,
+    selectedAccess,
+    selectedPackages,
+    selectedTrades,
+    sortDesc,
+  ]);
 
   const activeFilterCount =
     selectedMethods.size +
     selectedStates.size +
-    selectedAccess.size;
+    selectedAccess.size +
+    selectedPackages.size +
+    selectedTrades.size;
 
   const clearAllFilters = () => {
     setSelectedMethods(new Set());
     setSelectedStates(new Set());
     setSelectedAccess(new Set());
+    setSelectedPackages(new Set());
+    setSelectedTrades(new Set());
   };
 
   const toggleAccess = (a: AccessLevel) => {
@@ -164,6 +185,31 @@ export default function StudentsPage() {
       if (next.has(a)) next.delete(a);
       else next.add(a);
       return next;
+    });
+  };
+
+  const togglePackage = (p: string) => {
+    setSelectedPackages((prev) => {
+      const next = new Set(prev);
+      if (next.has(p)) next.delete(p);
+      else next.add(p);
+      return next;
+    });
+  };
+
+  const toggleTrade = (t: string) => {
+    setSelectedTrades((prev) => {
+      const next = new Set(prev);
+      if (next.has(t)) next.delete(t);
+      else next.add(t);
+      return next;
+    });
+  };
+
+  const toggleKpiState = (state: FinanceState) => {
+    setSelectedStates((prev) => {
+      if (prev.size === 1 && prev.has(state)) return new Set();
+      return new Set([state]);
     });
   };
 
@@ -188,6 +234,62 @@ export default function StudentsPage() {
     return map;
   }, [students]);
 
+  const packageOptions = useMemo(() => {
+    const unique = new Set(students.map((s) => s.coursePackage));
+    return [...unique].sort((a, b) => a.localeCompare(b));
+  }, [students]);
+
+  const tradeOptions = useMemo(() => {
+    const unique = new Set(
+      students.map((s) => tradeFromCoursePackage(s.coursePackage)),
+    );
+    return [...unique].sort((a, b) => a.localeCompare(b));
+  }, [students]);
+
+  const packageCountMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const s of students) {
+      const p = s.coursePackage;
+      map.set(p, (map.get(p) ?? 0) + 1);
+    }
+    return map;
+  }, [students]);
+
+  const tradeCountMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const s of students) {
+      const t = tradeFromCoursePackage(s.coursePackage);
+      map.set(t, (map.get(t) ?? 0) + 1);
+    }
+    return map;
+  }, [students]);
+
+  const accessCountMap = useMemo(() => {
+    const map = new Map<AccessLevel, number>();
+    for (const s of students) {
+      map.set(s.access, (map.get(s.access) ?? 0) + 1);
+    }
+    return map;
+  }, [students]);
+
+  const workItemStudents = useMemo(
+    () => students.filter((s) => IS_WORK_ITEM[s.state]),
+    [students],
+  );
+
+  const workItemQueueCounts = useMemo(() => {
+    const counts = new Map<FinanceState, number>();
+    for (const { state } of WORK_ITEM_BOARD) counts.set(state, 0);
+    for (const s of workItemStudents) {
+      if (counts.has(s.state)) {
+        counts.set(s.state, (counts.get(s.state) ?? 0) + 1);
+      }
+    }
+    return counts;
+  }, [workItemStudents]);
+
+  const summaryLine = `${workItemStudents.length} students requiring manual finance action across ${WORK_ITEM_BOARD.length} work item states`;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -199,34 +301,122 @@ export default function StudentsPage() {
         </p>
       </div>
 
-      {/* Search bar + Filters button */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, email, or ID..."
-            className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm transition-colors focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
-          />
+      <p className="text-sm text-slate-700">{summaryLine}</p>
+
+      {/* Work queue KPI cards */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+        {WORK_ITEM_BOARD.map(({ state, label }) => {
+          const count = workItemQueueCounts.get(state) ?? 0;
+          const kpiSelected =
+            selectedStates.size === 1 && selectedStates.has(state);
+          return (
+            <button
+              key={state}
+              type="button"
+              onClick={() => toggleKpiState(state)}
+              className={`rounded-xl border bg-white p-4 text-left shadow-sm transition-all hover:border-slate-300 hover:shadow ${
+                kpiSelected
+                  ? "border-indigo-400 ring-2 ring-indigo-100"
+                  : "border-slate-200"
+              }`}
+            >
+              <p className="text-2xl font-semibold tabular-nums text-slate-900">
+                {count}
+              </p>
+              <p className="mt-1 text-sm font-medium text-slate-800">{label}</p>
+              <p className="mt-0.5 font-mono text-[11px] text-slate-400">
+                {STATE_ID[state]}
+              </p>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Search + inline filters */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-3">
+          <div className="relative min-h-[42px] min-w-0 flex-1 lg:max-w-md">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name, ID, email..."
+              className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm transition-colors focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+            />
+          </div>
+          <div className="flex min-w-0 flex-1 flex-wrap gap-2 lg:flex-nowrap lg:justify-end">
+            <div className="min-w-[130px] flex-1 lg:max-w-[190px]">
+              <DropdownFilter
+                placeholder="All Finance States"
+                searchPlaceholder="State..."
+                options={ALL_FINANCE_STATES.map((s) => ({
+                  value: s,
+                  label: s.replace(/_/g, " "),
+                  count: stateCountMap.get(s) ?? 0,
+                }))}
+                selected={selectedStates}
+                onChange={toggleState}
+              />
+            </div>
+            <div className="min-w-[130px] flex-1 lg:max-w-[190px]">
+              <DropdownFilter
+                placeholder="All Student States"
+                searchPlaceholder="Access..."
+                options={ACCESS_OPTIONS.map((o) => ({
+                  value: o,
+                  label: o.replace(/_/g, " "),
+                  count: accessCountMap.get(o) ?? 0,
+                }))}
+                selected={selectedAccess}
+                onChange={toggleAccess}
+              />
+            </div>
+            <div className="min-w-[130px] flex-1 lg:max-w-[190px]">
+              <DropdownFilter
+                placeholder="All Methods"
+                searchPlaceholder="Method..."
+                options={ALL_PAYMENT_METHODS.map((m) => ({
+                  value: m,
+                  label: m,
+                  count: methodCountMap.get(m) ?? 0,
+                }))}
+                selected={selectedMethods}
+                onChange={toggleMethod}
+              />
+            </div>
+            <div className="min-w-[130px] flex-1 lg:max-w-[190px]">
+              <DropdownFilter
+                placeholder="All Packages"
+                searchPlaceholder="Package..."
+                options={packageOptions.map((p) => ({
+                  value: p,
+                  label: p,
+                  count: packageCountMap.get(p) ?? 0,
+                }))}
+                selected={selectedPackages}
+                onChange={togglePackage}
+              />
+            </div>
+            <div className="min-w-[130px] flex-1 lg:max-w-[190px]">
+              <DropdownFilter
+                placeholder="All Trades"
+                searchPlaceholder="Trade..."
+                options={tradeOptions.map((t) => ({
+                  value: t,
+                  label: t,
+                  count: tradeCountMap.get(t) ?? 0,
+                }))}
+                selected={selectedTrades}
+                onChange={toggleTrade}
+              />
+            </div>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setFiltersOpen(true)}
-          className={`flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
-            activeFilterCount > 0
-              ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-          }`}
-        >
-          <SlidersHorizontal className="h-4 w-4" />
-          Filters
-          {activeFilterCount > 0 && (
-            <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-indigo-600 px-1.5 text-[10px] font-bold text-white">
-              {activeFilterCount}
-            </span>
-          )}
-        </button>
+        <div className="flex justify-end">
+          <p className="text-xs text-slate-500">
+            Showing {filtered.length} of {students.length} students
+          </p>
+        </div>
       </div>
 
       {/* Active filter chips */}
@@ -284,6 +474,38 @@ export default function StudentsPage() {
             </span>
           ))}
 
+          {Array.from(selectedPackages).map((p) => (
+            <span
+              key={p}
+              className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-700"
+            >
+              {p}
+              <button
+                type="button"
+                onClick={() => togglePackage(p)}
+                className="ml-0.5 rounded-full p-0.5 hover:bg-slate-200"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </span>
+          ))}
+
+          {Array.from(selectedTrades).map((t) => (
+            <span
+              key={t}
+              className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-700"
+            >
+              {t}
+              <button
+                type="button"
+                onClick={() => toggleTrade(t)}
+                className="ml-0.5 rounded-full p-0.5 hover:bg-slate-200"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </span>
+          ))}
+
           <button
             type="button"
             onClick={clearAllFilters}
@@ -293,63 +515,6 @@ export default function StudentsPage() {
           </button>
         </div>
       )}
-
-      {activeFilterCount === 0 && (
-        <p className="text-xs text-slate-500">
-          {filtered.length} student{filtered.length !== 1 ? "s" : ""}
-        </p>
-      )}
-
-      {/* Filter Sidebar */}
-      <FilterSidebar
-        open={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-        title="Advanced Filters"
-        description="Filter work items by multiple criteria."
-        activeCount={activeFilterCount}
-        onClearAll={clearAllFilters}
-      >
-        <FilterSection label="Payment Method">
-          <DropdownFilter
-            placeholder="Select methods..."
-            searchPlaceholder="Method..."
-            options={ALL_PAYMENT_METHODS.map((m) => ({
-              value: m,
-              label: m,
-              count: methodCountMap.get(m) ?? 0,
-            }))}
-            selected={selectedMethods}
-            onChange={toggleMethod}
-          />
-        </FilterSection>
-
-        <FilterSection label="Finance State">
-          <DropdownFilter
-            placeholder="Select states..."
-            searchPlaceholder="State..."
-            options={ALL_FINANCE_STATES.map((s) => ({
-              value: s,
-              label: s.replace(/_/g, " "),
-              count: stateCountMap.get(s) ?? 0,
-            }))}
-            selected={selectedStates}
-            onChange={toggleState}
-          />
-        </FilterSection>
-
-        <FilterSection label="Access Level">
-          <DropdownFilter
-            placeholder="Select access levels..."
-            searchPlaceholder="Access level..."
-            options={ACCESS_OPTIONS.map((o) => ({
-              value: o,
-              label: o.replace(/_/g, " "),
-            }))}
-            selected={selectedAccess}
-            onChange={toggleAccess}
-          />
-        </FilterSection>
-      </FilterSidebar>
 
       {/* Table */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
